@@ -1,0 +1,6 @@
+.cache/
+samples/football-keyframes/videos/
+.env
+runs/
+__pycache__/
+*.pyc
