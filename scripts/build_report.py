@@ -201,7 +201,8 @@ def main():
                .replace("__SCENE_PHONE__", scene_svg.build()[1])
                .replace("__TALK_LAND__", scene_svg.build_talk()[0])
                .replace("__TALK_PHONE__", scene_svg.build_talk()[1])
-               .replace("__TALK__", json.dumps(talk, ensure_ascii=False) if talk else "null"))
+               .replace("__TALK__", json.dumps(talk, ensure_ascii=False) if talk else "null")
+               .replace("__GEM_MODEL__", gem_model()))
     (out / "index.html").write_text(page)
     files = sorted(p.name for p in (out / "media").iterdir())
     (out / "files.json").write_text(json.dumps({f"media/{f}": str(out / "media" / f) for f in files}, indent=1))
@@ -229,6 +230,13 @@ def kf_track(kfs, plan, c0, talk=False):
             r["who"], r["who_p"] = k.get("who"), round(max(wp.values()), 2) if wp else None
         rows.append(r)
     return rows
+
+
+def gem_model() -> str:
+    """Gemini model id actually used, read from the saved request payloads."""
+    ids = {json.loads(p.read_text())["payload"]["model"]
+           for p in (ROOT / "runs").glob("gemini_*/*anchors.request.json")}
+    return " / ".join(sorted(ids)) or "gemini"
 
 
 PRICE_DREX = 0.03 / 1e6  # drex-max-v1.1: 30 nUSD per input token
