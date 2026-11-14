@@ -18,6 +18,8 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from reframe.pipeline import _hms  # noqa: E402
+sys.path.insert(0, str(ROOT / "scripts"))
+import overview_svg  # noqa: E402
 
 # Ground truth for the El Clásico window, from the broadcast commentary (transcript) + match record.
 KNOWN = [
@@ -155,7 +157,8 @@ def main():
     page = (tpl.replace("__DATA__", json.dumps(data, ensure_ascii=False))
                .replace("__STATS__", json.dumps(stats, ensure_ascii=False))
                .replace("__COST__", json.dumps(cost_rows, ensure_ascii=False))
-               .replace("__BASELINE__", "true" if has_base else "false"))
+               .replace("__BASELINE__", "true" if has_base else "false")
+               .replace("__OVERVIEW__", overview_svg.build()))
     (out / "index.html").write_text(page)
     files = sorted(p.name for p in (out / "media").iterdir())
     (out / "files.json").write_text(json.dumps({f"media/{f}": str(out / "media" / f) for f in files}, indent=1))

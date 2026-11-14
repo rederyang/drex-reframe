@@ -453,7 +453,10 @@ def main():
             tag = f"{ei:02d}_{_hms(e['t_peak']).replace(':', '-')}_{e['event']}"
             render(video, plan, run / f"vertical_{tag}.mp4", run / f"debug_{tag}.mp4", kfs)
             print(f"[render] {tag} in {time.time() - t:.1f}s")
-    (run / "timing.json").write_text(json.dumps(T, indent=1))
+    # cached stages finish in ~0s; keep the last real timing for those
+    tf = run / "timing.json"
+    prev = json.loads(tf.read_text()) if tf.exists() else {}
+    tf.write_text(json.dumps({k: (v if v > 1 else prev.get(k, v)) for k, v in T.items()}, indent=1))
 
 
 def _hms(t: float) -> str:

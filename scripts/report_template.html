@@ -103,6 +103,47 @@ ul.notes{margin:0;padding-left:20px;display:grid;gap:8px;max-width:76ch}
 .chart svg{width:100%;height:auto;display:block}
 .chart .ax{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
 ol.steps{margin:0;padding-left:22px;display:grid;gap:10px;max-width:78ch}
+
+/* overview diagram */
+.overview{margin:0;display:grid;gap:10px}
+.overview .scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px}
+.overview svg{display:block;width:100%;min-width:760px;height:auto}
+.overview figcaption{font-size:13px;color:var(--muted)}
+.o-node{fill:var(--surface);stroke:var(--ink);stroke-width:1.5}
+.o-panel{fill:var(--bg);stroke:var(--line)}
+.o-glyph{fill:none;stroke:var(--muted);stroke-width:1.5}
+.o-crop-s{stroke:var(--crop);stroke-width:2}
+.o-t1{font-family:var(--f-body);font-size:15px;font-weight:600;fill:var(--ink)}
+.o-t2{font-family:var(--f-body);font-size:12.5px;fill:var(--muted)}
+.o-t3{font-family:var(--f-body);font-size:13.5px;font-weight:600;fill:var(--ink)}
+.o-h{font-family:var(--f-display);font-size:19px;font-weight:700;fill:var(--ink)}
+.o-lab{font-family:var(--f-body);font-size:13.5px;font-weight:600;fill:var(--ink)}
+.o-drex-t{fill:var(--pitch)}
+.o-arrow{stroke:var(--ink);stroke-width:1.6}
+.o-drex{stroke:var(--pitch);stroke-width:2.6}
+.o-head{fill:var(--ink)} .o-head-d{fill:var(--pitch)}
+.o-conn{fill:none;stroke:var(--muted);stroke-dasharray:3 4}
+.o-pitch{fill:var(--pitch);fill-opacity:.16;stroke:var(--line)}
+.o-gridl{stroke:var(--region);stroke-opacity:.55}
+.o-num{font-family:var(--f-mono);font-size:11px;fill:var(--region)}
+.o-player{fill:var(--muted)}
+.o-region{fill:var(--region);fill-opacity:.12;stroke:var(--region);stroke-width:2.5}
+.o-cropbox{fill:none;stroke:var(--crop);stroke-width:3}
+.o-ball{fill:var(--focus)}
+.o-ring{fill:none;stroke:var(--focus);stroke-width:1.8}
+.o-region-t{fill:var(--region)} .o-ball-t{fill:var(--focus)} .o-crop-t{fill:var(--crop)}
+.o-axis{stroke:var(--line);stroke-width:1.5}
+.o-cut{stroke:var(--muted);stroke-dasharray:4 3}
+.o-kf{fill:var(--region)}
+.o-path{fill:none;stroke:var(--crop);stroke-width:3}
+.o-leader{stroke:var(--focus);stroke-width:1.2}
+.ideas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:3px solid var(--ink)}
+.ideas>div{padding:14px 16px 4px 0;display:grid;gap:4px;align-content:start;min-width:0}
+.ideas>div+div{padding-left:16px;border-left:1px solid var(--line)}
+.ideas b{font-family:var(--f-display);font-size:20px;line-height:1.2}
+.ideas span{font-size:13.5px;color:var(--muted)}
+@media (max-width:860px){.ideas{grid-template-columns:repeat(2,minmax(0,1fr))}.ideas>div:nth-child(3){padding-left:0;border-left:0}}
+@media (max-width:480px){.ideas{grid-template-columns:minmax(0,1fr)}.ideas>div{padding-left:0!important;border-left:0!important;border-top:1px solid var(--line)}}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 </style>
 
@@ -110,7 +151,17 @@ ol.steps{margin:0;padding-left:22px;display:grid;gap:10px;max-width:78ch}
   <header class="head">
     <div class="eyebrow">Nace AI Hackathon · 皇马 2–3 巴萨（2017）· 视频时间 <span id="win"></span></div>
     <h1>Drex 竖屏重构</h1>
-    <p class="muted">输入一段 30 分钟的横屏比赛回放。Pipeline 找出值得剪的时刻，用 Drex Max 读栅格编号决定每一帧该保留哪块画面，再在每个镜头内部平滑成连贯的 9:16 运镜。</p>
+    <p>把一整场横屏足球转播，自动剪成适合手机竖屏的高光短视频：找出进球、红牌这些值得看的时刻，每一帧都决定该保留画面的哪一块，并让镜头像真人摄像师一样平稳地跟着球走。</p>
+    <figure class="overview">
+      <div class="scroll">__OVERVIEW__</div>
+      <figcaption>绿色箭头是调用 Drex 的两步，其余都是本地计算。越往右处理的画面越少，所以贵的模型只花在值得看的片段上。</figcaption>
+    </figure>
+    <div class="ideas">
+      <div><b>定位变成选择题</b><span>Drex 不输出坐标框，就在画面上画编号线，让它选“左边界是几号线、球在几号线”，概率分布顺便给出置信度。</span></div>
+      <div><b>贵的模型只看候选</b><span>先用解说词和欢呼声这类免费信号筛出 20 个候选时刻，30 分钟比赛只调用约 70 次 Drex。</span></div>
+      <div><b>平滑，但不丢球</b><span>同一镜头内平滑运镜，镜头切换处直接硬切；一旦球要出框，就在那一帧把镜头钉回来再重算。</span></div>
+      <div><b>离线可以预判</b><span>回放视频能看到“未来”，镜头在射门前就开始移动，而不是追着球跑。</span></div>
+    </div>
     <div class="score" id="score"></div>
   </header>
 
@@ -263,11 +314,11 @@ function chart(c) {
     s += `<text x="${(X(a) + X(b)) / 2}" y="${T - 7}" text-anchor="middle" class="ax">${SHOT_ZH[ty] || ty}</text>`;
   });
   [[0, "左缘"], [c.W / 2, "中"], [c.W, "右缘"]].forEach(([v, n]) => {
-    s += `<line x1="${L}" x2="${VW - R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)"/>`;
+    s += `<line x1="${L}" x2="${VW - R}" y1="${Y(v)}" y2="${Y(v)}" style="stroke:var(--line)"/>`;
     s += `<text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" class="ax">${n}</text>`;
   });
   for (let t = 0; t <= c.dur; t += 5) s += `<text x="${X(t)}" y="${VH - 8}" text-anchor="middle" class="ax">${t}s</text>`;
-  c.cuts.forEach(t => s += `<line x1="${X(t)}" x2="${X(t)}" y1="${T}" y2="${VH - B}" stroke="var(--muted)" stroke-dasharray="4 3"/>`);
+  c.cuts.forEach(t => s += `<line x1="${X(t)}" x2="${X(t)}" y1="${T}" y2="${VH - B}" style="stroke:var(--muted)" stroke-dasharray="4 3"/>`);
   // crop band, broken at cuts so hard cuts read as jumps
   const segs = []; let cur = [];
   c.path.forEach(p => { if (cur.length && c.cuts.some(k => k > cur[cur.length - 1][0] && k <= p[0])) { segs.push(cur); cur = []; } cur.push(p); });
@@ -275,16 +326,16 @@ function chart(c) {
   segs.forEach(sg => {
     const top = sg.map(p => `${X(p[0])},${Y(p[1] + p[2])}`).join(" ");
     const bot = sg.slice().reverse().map(p => `${X(p[0])},${Y(p[1] - p[2])}`).join(" ");
-    s += `<polygon points="${top} ${bot}" fill="var(--crop)" fill-opacity=".18" stroke="none"/>`;
-    s += `<polyline points="${sg.map(p => `${X(p[0])},${Y(p[1])}`).join(" ")}" fill="none" stroke="var(--crop)" stroke-width="2"/>`;
+    s += `<polygon points="${top} ${bot}" style="fill:var(--crop)" fill-opacity=".18" stroke="none"/>`;
+    s += `<polyline points="${sg.map(p => `${X(p[0])},${Y(p[1])}`).join(" ")}" fill="none" style="stroke:var(--crop)" stroke-width="2"/>`;
   });
   c.kf.forEach(([t, tg, f, fs, pin, ty]) => {
     if (ty === "graphic" || ty === "crowd") return;
-    s += `<rect x="${X(t) - 3}" y="${Y(tg) - 3}" width="6" height="6" fill="var(--region)"/>`;
+    s += `<rect x="${X(t) - 3}" y="${Y(tg) - 3}" width="6" height="6" style="fill:var(--region)"/>`;
     if (f == null) return;
-    if (fs) s += `<line x1="${X(t)}" x2="${X(t)}" y1="${Y(f + fs)}" y2="${Y(f - fs)}" stroke="var(--focus)" stroke-opacity=".35" stroke-width="2"/>`;
-    s += `<circle cx="${X(t)}" cy="${Y(f)}" r="3.5" fill="var(--focus)"/>`;
-    if (pin) s += `<circle cx="${X(t)}" cy="${Y(f)}" r="7" fill="none" stroke="var(--focus)" stroke-width="1.5"/>`;
+    if (fs) s += `<line x1="${X(t)}" x2="${X(t)}" y1="${Y(f + fs)}" y2="${Y(f - fs)}" style="stroke:var(--focus)" stroke-opacity=".35" stroke-width="2"/>`;
+    s += `<circle cx="${X(t)}" cy="${Y(f)}" r="3.5" style="fill:var(--focus)"/>`;
+    if (pin) s += `<circle cx="${X(t)}" cy="${Y(f)}" r="7" fill="none" style="stroke:var(--focus)" stroke-width="1.5"/>`;
   });
   return s + `</svg><div class="legend" style="font-size:12px">
     <span style="color:var(--crop)"><i class="sw" style="background:var(--crop);opacity:.5"></i>最终裁切范围</span>
