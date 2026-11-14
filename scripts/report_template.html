@@ -308,6 +308,7 @@ table.diff td{vertical-align:top;line-height:1.55}
 .duo figure{margin:0;display:grid;gap:6px;align-content:start}
 .duo figcaption{display:flex;flex-wrap:wrap;gap:2px 8px;font-size:12.5px;font-variant-numeric:tabular-nums;color:var(--muted)}
 .duo figcaption b{width:100%;font-size:14px;color:var(--ink)}
+.duo .mdl{font-family:var(--f-mono);font-size:11px;font-weight:400;color:var(--muted);white-space:nowrap}
 .duo figcaption .acc{width:100%}
 .duo .win{color:var(--pitch);font-weight:600}
 .duo .ph{display:grid;place-items:center;background:var(--bg);border:1px dashed var(--line);border-radius:4px;color:var(--muted);font-size:13px;text-align:center;padding:8px}
@@ -451,7 +452,7 @@ table.diff td{vertical-align:top;line-height:1.55}
   <section>
     <div class="eyebrow">Highlights</div>
     <h2>Vertical output: Drex and Gemini side by side</h2>
-    <p class="muted duo-note" style="font-size:13px">Each row shows Drex on the left and Gemini on the right, both deciding the framing on the same clip with the same planner. Under each video: model cost, decision time, and the share of keyframes with the ball inside the crop (first against Drex’s own reading, then against Gemini’s; there are no human labels). Green marks the cheaper or faster of the two. The debug view overlays the 16×9 grid Drex reads, highlights the lines it picked, and the panel beside it shows Drex’s output for the current frame.</p>
+    <p class="muted duo-note" style="font-size:13px">Each row shows Drex on the left and Gemini (<span class="mono">__GEM_MODEL__</span>) on the right, both deciding the framing on the same clip with the same planner. Under each video: model cost, decision time, and the share of keyframes with the ball inside the crop (first against Drex’s own reading, then against Gemini’s; there are no human labels). Green marks the cheaper or faster of the two. The debug view overlays the 16×9 grid Drex reads, highlights the lines it picked, and the panel beside it shows Drex’s output for the current frame.</p>
     <div class="legend">
       <span style="color:var(--region)"><i class="sw" style="background:var(--region)"></i>Region Drex chose to keep</span>
       <span style="color:var(--crop)"><i class="sw" style="background:var(--crop)"></i>Smoothed 9:16 crop</span>
@@ -552,7 +553,7 @@ table.diff td{vertical-align:top;line-height:1.55}
     <div class="eyebrow">Shorts</div>
     <h2>5 vertical outputs: Drex and Gemini side by side</h2>
     <p class="muted">Each row shows the debug view (yellow: the speaker Drex boxed; cyan: the final crop) and a speaker timeline. The bottom lane is the vertical crop position: flat within each shot, jumping only at cuts. The source was already edited, so most cuts land right when the speaker changes.</p>
-    <p class="muted duo-note" style="font-size:13px">Each row shows Drex on the left and Gemini on the right, both deciding the framing on the same clip with the same planner. Under each video: model cost, decision time, and the share of keyframes with the speaker’s face inside the crop (first against Drex’s own reading, then against Gemini’s; there are no human labels). Green marks the cheaper or faster of the two. The debug view overlays the 16×9 grid Drex reads, highlights the lines it picked, and the panel beside it shows Drex’s output for the current frame.</p>
+    <p class="muted duo-note" style="font-size:13px">Each row shows Drex on the left and Gemini (<span class="mono">__GEM_MODEL__</span>) on the right, both deciding the framing on the same clip with the same planner. Under each video: model cost, decision time, and the share of keyframes with the speaker’s face inside the crop (first against Drex’s own reading, then against Gemini’s; there are no human labels). Green marks the cheaper or faster of the two. The debug view overlays the 16×9 grid Drex reads, highlights the lines it picked, and the panel beside it shows Drex’s output for the current frame.</p>
     <div class="legend">
       <span><i class="sw" style="background:var(--spk-a)"></i>Speaker A</span>
       <span><i class="sw" style="background:var(--spk-b)"></i>Speaker B</span>
@@ -563,7 +564,7 @@ table.diff td{vertical-align:top;line-height:1.55}
   </section>
 
   <section id="tVsSec" hidden>
-    <div class="eyebrow">Against Gemini</div>
+    <div class="eyebrow">Against Gemini · __GEM_MODEL__</div>
     <h2>Same 5 clips, Gemini decides who to show</h2>
     <p class="muted">Clips, transcript context and the camera planner are identical; only the “who to show, where to frame, every 0.5s” decision moves from Drex to Gemini, which watches the video with sound.</p>
     <div class="tablewrap"><table id="tVs"></table></div>
@@ -660,7 +661,7 @@ function duo(c, drexV, drexP, what) {
   const dw = {c: g && d.usd < g.usd, t: g && d.t < g.t}, gw = {c: g && g.usd < d.usd, t: g && g.t < d.t};
   return `<div class="duo">
     <figure><video class="vert" src="media/${drexV}" poster="media/${drexP}" controls playsinline preload="none"></video>${cap("Drex", d.usd, d.t, A.drex, dw)}</figure>
-    ${g ? `<figure><video class="vert" src="media/${g.v}" poster="media/${g.p}" controls playsinline muted preload="none"></video>${cap("Gemini", g.usd, g.t, A.gemini, gw)}</figure>`
+    ${g ? `<figure><video class="vert" src="media/${g.v}" poster="media/${g.p}" controls playsinline muted preload="none"></video>${cap(`Gemini <span class="mdl">__GEM_MODEL__</span>`, g.usd, g.t, A.gemini, gw)}</figure>`
         : `<figure class="na"><div class="vert ph">Gemini result pending</div></figure>`}
   </div>`;
 }
@@ -757,13 +758,13 @@ if (CMP) {
   const usd = v => v == null ? "–" : "$" + (v < 0.01 ? v.toFixed(4) : v.toFixed(3));
   const D1 = CMP.discovery;
   $("#cmpFind").innerHTML = `<thead><tr><th>Approach</th><th class="n">Found on time</th><th class="n">Model calls</th><th class="n">Latency</th><th class="n">Input tokens</th><th class="n">Model cost</th></tr></thead><tbody>
-    <tr><td>Gemini native video: watches all 30 min at once, returns time ranges</td><td class="n">${D1.gemini.on_time} / 4</td><td class="n">${D1.gemini.calls}</td><td class="n best">${D1.gemini.latency_s.toFixed(0)}s</td><td class="n">${fmt(D1.gemini.tokens)}</td><td class="n">${usd(D1.gemini.usd)}</td></tr>
+    <tr><td>Gemini native video (<span class="mono">__GEM_MODEL__</span>): watches all 30 min at once, returns time ranges</td><td class="n">${D1.gemini.on_time} / 4</td><td class="n">${D1.gemini.calls}</td><td class="n best">${D1.gemini.latency_s.toFixed(0)}s</td><td class="n">${fmt(D1.gemini.tokens)}</td><td class="n">${usd(D1.gemini.usd)}</td></tr>
     <tr class="ours"><td>Drex: commentary + crowd-noise recall, Drex confirms each</td><td class="n best">${D1.drex.found_on_time} / 4</td><td class="n">${D1.drex.calls}</td><td class="n">${D1.drex.latency_s.toFixed(0)}s<br><span class="muted" style="font-size:12px">${esc(D1.drex.latency_note)}</span></td><td class="n">${fmt(D1.drex.tokens)}</td><td class="n best">${usd(D1.drex.usd)}</td></tr></tbody>`;
   $("#gemMiss").innerHTML = "Gemini’s 3 picks: " + D1.gemini.events.map(e => {
     const ok = Math.abs(e.err_s) <= 15;
     return `${ok ? "✓" : "✗"} ${esc(e.nearest_known)} (${ok ? "timestamp correct" : "timestamp off by " + Math.round(Math.abs(e.err_s) / 60 * 10) / 10 + " min, so it cropped the wrong footage"})`;
   }).join("; ") + ". Gemini’s descriptions were all right, down to the scoreboard clock. The video timestamps were wrong. The baseline was capped at 3 picks, so it skipped the red card.";
-  const S2 = CMP.summary, M = [["center", "Center crop (no model)"], ["gemini", "Gemini director: watches the whole clip, outputs region + focus"], ["drex", "Drex grid: picks numbered lines every 0.5s"]];
+  const S2 = CMP.summary, M = [["center", "Center crop (no model)"], ["gemini", "Gemini director (<span class=\"mono\">__GEM_MODEL__</span>): watches the whole clip, outputs region + focus"], ["drex", "Drex grid: picks numbered lines every 0.5s"]];
   const best = (k, hi) => { const v = M.map(([m]) => S2[m][k]).filter(x => x != null); return hi ? Math.max(...v) : Math.min(...v); };
   const cell = (m, k, f, hi) => { const v = S2[m][k]; return `<td class="n${v != null && v === best(k, hi) ? " best" : ""}">${f(v)}</td>`; };
   $("#cmpCrop").innerHTML = `<thead><tr><th>Approach</th><th class="n">Ball in frame<br>Drex ball</th><th class="n">Ball in frame<br>Gemini ball</th><th class="n">Swings<br>per min</th><th class="n">Decision time<br>per clip</th><th class="n">Input tokens<br>per clip</th><th class="n">Model cost<br>per clip</th></tr></thead><tbody>` +
@@ -840,7 +841,7 @@ if (T) {
       `<td class="n ${b("cuts_per_min", 0)[m]}">${V[k].cuts_per_min.toFixed(1)}</td>` +
       `<td class="n ${b("t", 0)[m]}">${V[k].t.toFixed(0)}s</td><td class="n ${b("usd", 0)[m]}">${money(V[k].usd)}</td></tr>`;
     $("#tVs").innerHTML = `<thead><tr><th>Decision model</th><th class="n">Face in frame<br>Drex ref</th><th class="n">Face in frame<br>Gemini ref</th><th class="n">Hard cuts<br>per min</th><th class="n">Decision time<br>per clip</th><th class="n">Cost<br>per clip</th></tr></thead><tbody>` +
-      row("Drex: frames every 0.5s + transcript, picks grid lines", "drex", 0) + row("Gemini: watches the clip with sound, returns coordinates", "gemini", 1) + `</tbody>`;
+      row("Drex: frames every 0.5s + transcript, picks grid lines", "drex", 0) + row("Gemini (<span class=\"mono\">__GEM_MODEL__</span>): watches the clip with sound, returns coordinates", "gemini", 1) + `</tbody>`;
   }
   const SPK = ["var(--spk-a)", "var(--spk-b)", "var(--spk-c)", "var(--muted)"];
   const WHO_Y = {left: 0, center: 1, right: 2};
