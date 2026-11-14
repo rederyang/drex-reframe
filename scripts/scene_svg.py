@@ -45,3 +45,37 @@ def build() -> str:
 
 if __name__ == "__main__":
     print(build())
+
+
+# ---------------- talk scene: two people, the crop CUTS to whoever speaks ----------------
+TX = {"L": 100.0, "R": 220.0}
+
+
+def _person(x, shirt, cls, d=1):
+    """d = +1 waves to the right of the face, -1 to the left (toward the other person)."""
+    waves = "".join(f'<path d="M{x + d * (24 + i * 7)},{60 - i * 3} q{d * (6 + i * 2)},{10 + i * 3} 0,{20 + i * 6}" class="tk-wave"/>'
+                    for i in range(3))
+    return (f'<rect x="{x - 36}" y="94" width="72" height="70" rx="22" class="tk-shirt {shirt}"/>'
+            f'<circle cx="{x}" cy="70" r="19" class="tk-skin"/>'
+            f'<path d="M{x - 19},66 q19,-26 38,0 v-6 q-19,-22 -38,0 z" class="tk-hair"/>'
+            f'<g class="{cls}">{waves}</g>')
+
+
+def talk_scene() -> str:
+    return "".join([f'<rect x="0" y="0" width="{PW}" height="{PH}" class="tk-wall"/>',
+                    f'<rect x="0" y="0" width="{PW}" height="22" class="tk-shelf"/>',
+                    f'<rect x="0" y="146" width="{PW}" height="34" class="tk-table"/>',
+                    _person(TX["L"], "tk-a", "tk-talkL", 1), _person(TX["R"], "tk-b", "tk-talkR", -1),
+                    '<rect x="62" y="150" width="18" height="24" rx="3" class="tk-glass"/>',
+                    '<rect x="240" y="150" width="18" height="24" rx="3" class="tk-glass"/>'])
+
+
+def build_talk():
+    land = (f'<svg viewBox="-2 -2 {PW + 4} {PH + 4}" class="sc-land" role="img" '
+            f'aria-label="两人同框的访谈画面，9:16 取景框在换人说话时直接切到说话人">'
+            f'{talk_scene()}'
+            f'<g class="tk-cropmove"><rect x="0" y="0" width="{CW}" height="{PH}" class="sc-crop"/>'
+            f'<rect x="0" y="0" width="{CW}" height="{PH}" class="sc-cropglow"/></g></svg>')
+    phone = (f'<svg viewBox="0 0 {CW} {PH}" class="sc-phone" role="img" aria-label="手机竖屏始终对准正在说话的人">'
+             f'<g class="tk-pan">{talk_scene()}</g></svg>')
+    return land, phone

@@ -173,6 +173,7 @@ def main():
                    "-q:v", "6", str(out / "media" / v.replace(".mp4", ".jpg")))
             ev = events[ei]
             c["label"] = verdict(ev)[1].replace("命中：", "")
+    talk = build_talk(out)
     tpl = (ROOT / "scripts" / "report_template.html").read_text()
     page = (tpl.replace("__DATA__", json.dumps(data, ensure_ascii=False))
                .replace("__STATS__", json.dumps(stats, ensure_ascii=False))
@@ -180,12 +181,78 @@ def main():
                .replace("__COMPARE__", json.dumps(cmp, ensure_ascii=False) if cmp else "null")
                .replace("__OVERVIEW__", overview_svg.build())
                .replace("__SCENE_LAND__", scene_svg.build()[0])
-               .replace("__SCENE_PHONE__", scene_svg.build()[1]))
+               .replace("__SCENE_PHONE__", scene_svg.build()[1])
+               .replace("__TALK_LAND__", scene_svg.build_talk()[0])
+               .replace("__TALK_PHONE__", scene_svg.build_talk()[1])
+               .replace("__TALK__", json.dumps(talk, ensure_ascii=False) if talk else "null"))
     (out / "index.html").write_text(page)
     files = sorted(p.name for p in (out / "media").iterdir())
     (out / "files.json").write_text(json.dumps({f"media/{f}": str(out / "media" / f) for f in files}, indent=1))
     total = sum((out / "media" / f).stat().st_size for f in files)
     print(f"page ok: {len(clips)} clips, {len(grecs)} grid frames, media {total/1e6:.1f} MB in {len(files)} files")
+
+
+def build_talk(out: Path, name: str = "interview"):
+    """Interview / talk case: clips, speaker lanes, cost. Returns None if the run is missing."""
+    run = ROOT / "runs" / name
+    if not (run / "events.json").exists():
+        return None
+    events = json.loads((run / "events.json").read_text())
+    s3 = json.loads((run / "s3.json").read_text())
+    clips = []
+    for ci, e in enumerate(events):
+        tag = f"{ci:02d}_{_hms(e['clip'][0]).replace(':', '-')}"
+        v, d = run / f"vertical_{tag}.mp4", run / f"debug_{tag}.mp4"
+        if not v.exists():
+            continue
+        vo, do, po = out / "media" / f"t_v{ci:02d}.mp4", out / "media" / f"t_d{ci:02d}.mp4", out / "media" / f"t_p{ci:02d}.jpg"
+        sh("ffmpeg", "-y", "-loglevel", "error", "-i", str(v), "-vf", "scale=360:640", "-c:v", "libx264", "-crf", "28",
+           "-preset", "veryfast", "-c:a", "aac", "-b:a", "64k", "-movflags", "+faststart", str(vo))
+        sh("ffmpeg", "-y", "-loglevel", "error", "-i", str(d), "-an", "-c:v", "libx264", "-crf", "28", "-preset", "veryfast",
+           "-movflags", "+faststart", str(do))
+        sh("ffmpeg", "-y", "-loglevel", "error", "-ss", "6", "-i", str(vo), "-frames:v", "1", "-q:v", "6", str(po))
+        dpo = out / "media" / f"t_dp{ci:02d}.jpg"
+        sh("ffmpeg", "-y", "-loglevel", "error", "-ss", "6", "-i", str(do), "-frames:v", "1", "-q:v", "6", str(dpo))
+        plan = json.loads((run / f"plan_{ci:02d}.json").read_text())
+        c0, c1 = plan["clip"]
+        order = []
+        for _, _, spk in plan["speaker_turns"]:
+            if spk not in order:
+                order.append(spk)
+        turns = [[round(a - c0, 2), round(b - c0, 2), min(order.index(k), 3)] for a, b, k in plan["speaker_turns"]]
+        words = e["text"].split()
+        clips.append({
+            "v": vo.name, "d": do.name, "p": po.name, "dp": dpo.name, "start": _hms(c0), "dur": round(c1 - c0),
+            "score": e["score"], "n_spk": len({k for a, b, k in turns if b - a >= 1.0}),
+            "head": " ".join(words[:28]) + (" …" if len(words) > 28 else ""),
+            "tail": ("… " if len(words) > 28 else "") + " ".join(words[-22:]),
+            "turns": turns, "cuts": [round(c - c0, 2) for c in plan["cuts"]],
+            "who": [[round(k["t"] - c0, 2), k["who"]] for k in s3[str(ci)]],
+            "path": [[round(i / plan["fps"], 2), round(plan["cx"][i] / plan["W"], 3)] for i in range(0, len(plan["cx"]), 6)],
+            "dur_s": round(c1 - c0, 2),
+        })
+    usage = [json.loads(l) for l in (ROOT / "runs" / "usage.jsonl").read_text().splitlines() if l.strip()]
+    def agg(tag):
+        us = [u for u in usage if u["tag"] == tag]
+        tok = sum((u["usage"] or {}).get("input_tokens", 0) for u in us)
+        return len(us), tok, sum(u["latency_s"] for u in us)
+    ndi_usd = sum(float(json.loads((run / f"ndi_part{i}.json").read_text())["cost"]["total_usd"])
+                  for i in range(3) if (run / f"ndi_part{i}.json").exists())
+    PRICE = 0.03 / 1e6
+    n1, t1, l1 = agg("talk_s1")
+    n2, t2, l2 = agg("talk_s1_edges")
+    n3, t3, _ = agg("talk_s3")
+    timing = json.loads((run / "timing.json").read_text())
+    rows = [["NDI 转写 + 说话人分离（3 段 × 10 分钟，并行）", 3, "30 分钟音频", "约 25s", ndi_usd],
+            ["Drex · 候选窗口打分（文本）", n1, f"{t1:,} token", f"{l1:.0f}s", t1 * PRICE],
+            ["Drex · 选开头和结尾句（文本）", n2, f"{t2:,} token", f"{l2:.0f}s", t2 * PRICE],
+            ["Drex · 逐帧判断说话人和取景（画面）", n3, f"{t3:,} token", f"{timing.get('s3', 0):.0f}s", t3 * PRICE]]
+    drex_usd = (t1 + t2 + t3) * PRICE
+    s1 = json.loads((run / "s1.json").read_text())
+    return {"clips": clips, "windows": len(s1),
+            "cost": {"rows": rows, "ndi": ndi_usd, "drex": drex_usd, "total": ndi_usd + drex_usd},
+            # measured wall-clock of the runs: s0+NDI ~55s, Whisper sentences + s1 ~48s, s3 + render ~108s
+            "time": {"total": 55 + 48 + 108}}
 
 
 if __name__ == "__main__":

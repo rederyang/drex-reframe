@@ -25,6 +25,9 @@
   --hit:#5cc28f; --dup:#f0c419; --extra:#a3aab4;
   --hit-bg:#173527; --dup-bg:#3a3010; --extra-bg:#262c31; color-scheme:dark}
 *{box-sizing:border-box}
+/* grid tracks must not grow to fit wide tables/diagrams; those scroll inside their own containers */
+.wrap,.case,section,.head,.top{grid-template-columns:minmax(0,1fr);min-width:0}
+[hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
 .wrap{max-width:1180px;margin:0 auto;padding-block:32px 64px;
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
@@ -148,11 +151,12 @@ ol.steps{margin:0;padding-left:22px;display:grid;gap:10px;max-width:78ch}
 /* scene: landscape broadcast -> vertical phone (animated) */
 .scene{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:32px;align-items:center}
 @media (max-width:860px){.scene{grid-template-columns:minmax(0,1fr)}}
-.scene-viz{display:flex;align-items:center;gap:18px;min-width:0}
+.scene-viz{display:flex;align-items:center;gap:clamp(8px,2.5vw,18px);min-width:0}
+.scene-viz figure:first-child{flex:1 1 0}
 .scene-viz figure{margin:0;display:grid;gap:6px;justify-items:center;min-width:0}
 .scene-viz figcaption{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--muted)}
 .sc-land{width:100%;max-width:420px;height:auto;display:block;border-radius:6px}
-.phone{width:112px;flex:none;padding:7px;border-radius:20px;background:var(--ink)}
+.phone{width:clamp(76px,22vw,112px);flex:none;padding:7px;border-radius:20px;background:var(--ink)}
 .sc-phone{display:block;width:100%;height:auto;border-radius:14px}
 .scene-arrow{flex:none;color:var(--muted);font-size:22px}
 .scene-copy{display:grid;gap:14px;min-width:0}
@@ -191,13 +195,74 @@ h3{font-size:22px;margin-top:8px}
 @media (max-width:640px){.trio{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.trio figcaption span{display:none}}
 td.best{font-weight:700;color:var(--pitch)}
 tr.ours td:first-child{font-weight:600}
+
+/* top + case switch */
+.top{display:grid;gap:16px}
+.lead{font-size:17px;max-width:62ch}
+.cases{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:4px}
+.cases a{display:grid;gap:2px;padding:14px 18px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--ink);text-decoration:none;min-width:0}
+.cases a b{font-family:var(--f-display);font-size:24px;line-height:1.15}
+.cases a span{font-size:13px;color:var(--muted)}
+.cases a .case-k{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+.cases a[aria-selected="true"]{border-color:var(--ink);box-shadow:inset 0 -4px 0 var(--pitch)}
+.cases a:hover{border-color:var(--muted)}
+.cases a:focus-visible{outline:2px solid var(--crop);outline-offset:2px}
+@media (max-width:560px){.cases{grid-template-columns:minmax(0,1fr)}}
+.case{display:grid;gap:56px}
+.case-title{font-size:clamp(30px,5vw,44px)}
+/* interview */
+:root{--spk-a:#c2410c;--spk-b:#7c3aed;--spk-c:#0e7490}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--spk-a:#fb923c;--spk-b:#a78bfa;--spk-c:#22d3ee}}
+:root[data-theme="dark"]{--spk-a:#fb923c;--spk-b:#a78bfa;--spk-c:#22d3ee}
+.tk-wall{fill:#6b4a2f}.tk-shelf{fill:#4f3622}.tk-table{fill:#3f2a19}
+.tk-shirt{stroke:#1b120b;stroke-width:1}.tk-a{fill:#22252b}.tk-b{fill:#39404d}
+.tk-skin{fill:#e3b08f}.tk-hair{fill:#3b2a1d}.tk-glass{fill:#2a1a10;stroke:#d8c7a8;stroke-width:1}
+.tk-wave{fill:none;stroke:#ffd23f;stroke-width:2;stroke-linecap:round}
+.tk-cropmove{animation:tk-crop 6s step-end infinite}
+.tk-pan{animation:tk-pan 6s step-end infinite}
+.tk-talkL{animation:tk-l 6s step-end infinite}
+.tk-talkR{animation:tk-r 6s step-end infinite}
+@keyframes tk-crop{0%{transform:translate(49.4px,0)}50%{transform:translate(169.4px,0)}100%{transform:translate(49.4px,0)}}
+@keyframes tk-pan{0%{transform:translate(-49.4px,0)}50%{transform:translate(-169.4px,0)}100%{transform:translate(-49.4px,0)}}
+@keyframes tk-l{0%{opacity:1}50%{opacity:0}100%{opacity:1}}
+@keyframes tk-r{0%{opacity:0}50%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.tk-cropmove,.tk-pan,.tk-talkL,.tk-talkR{animation:none}.tk-cropmove{transform:translate(49.4px,0)}.tk-pan{transform:translate(-49.4px,0)}.tk-talkR{opacity:0}}
+table.diff td:first-child{font-weight:600;white-space:nowrap}
+table.diff td{vertical-align:top;line-height:1.55}
+.flow{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+.flow li{display:grid;gap:2px;padding:10px 14px;border:1px solid var(--line);border-radius:8px;background:var(--surface);min-width:0;position:relative}
+.flow li+li::before{content:"→";position:absolute;left:-8px;top:50%;transform:translate(-50%,-50%);color:var(--muted);font-size:13px}
+.flow li{margin-left:8px}.flow li:first-child{margin-left:0}
+.flow b{font-family:var(--f-mono);font-size:12px;color:var(--pitch)}
+@media (max-width:560px){.flow{display:grid;gap:18px}.flow li{margin-left:0}.flow li+li::before{content:"↓";left:24px;top:-10px;transform:translate(-50%,-50%)}}
+.flow span{font-size:14px}
+.quote{display:grid;gap:6px;font-size:14px;max-width:72ch}
+.quote span{color:var(--muted)}
+.quote q{quotes:none;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.lanes .ax{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+.lanes .lab{font-family:var(--f-body);font-size:12px;fill:var(--muted)}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 </style>
 
 <div class="wrap">
-  <header class="head">
-    <div class="eyebrow">Nace AI Hackathon · 皇马 2–3 巴萨（2017）· 视频时间 <span id="win"></span></div>
+  <header class="top">
+    <div class="eyebrow">Nace AI Hackathon · Drex 决策模型 + NDI 文档智能</div>
     <h1>Drex 竖屏重构</h1>
+    <p class="lead">把横屏长视频自动剪成竖屏短视频：先找出值得看的片段，再逐帧决定竖屏保留画面的哪一块，最后把这些决定连成平稳的镜头。同一套方法目前跑通了两类内容。</p>
+    <nav class="cases" role="tablist" aria-label="选择场景">
+      <a href="#football" role="tab" id="tab-football" aria-controls="case-football">
+        <span class="case-k">场景 1</span><b>足球赛事</b>
+        <span>30 分钟比赛 → 8 条高光 · 镜头跟球</span></a>
+      <a href="#interview" role="tab" id="tab-interview" aria-controls="case-interview">
+        <span class="case-k">场景 2</span><b>口播访谈</b>
+        <span>30 分钟三人访谈 → 5 条短视频 · 镜头跟说话人</span></a>
+    </nav>
+  </header>
+
+  <div class="case" id="case-football" role="tabpanel" aria-labelledby="tab-football">
+  <header class="head">
+    <div class="eyebrow">场景 1 · 皇马 2–3 巴萨（2017）· 视频时间 <span id="win"></span></div>
+    <h2 class="case-title">足球赛事：镜头跟着球走</h2>
     <div class="scene">
       <div class="scene-viz">
         <figure>__SCENE_LAND__<figcaption>横屏转播 16:9</figcaption></figure>
@@ -328,6 +393,83 @@ tr.ours td:first-child{font-weight:600}
       <li><b>转写用的是本地 Whisper。</b>NDI 当时被场馆网络的防火墙挡住，网络恢复后可以换回 NDI 再对比。</li>
     </ul>
   </section>
+  </div>
+
+  <div class="case" id="case-interview" role="tabpanel" aria-labelledby="tab-interview" hidden>
+  <header class="head">
+    <div class="eyebrow">场景 2 · 三人访谈节目 · 30 分钟 · 已剪辑的多机位素材</div>
+    <h2 class="case-title">口播访谈：镜头跟着说话的人</h2>
+    <div class="scene">
+      <div class="scene-viz">
+        <figure>__TALK_LAND__<figcaption>两人同框 16:9</figcaption></figure>
+        <span class="scene-arrow" aria-hidden="true">→</span>
+        <figure><div class="phone">__TALK_PHONE__</div><figcaption>竖屏 9:16</figcaption></figure>
+      </div>
+      <div class="scene-copy">
+        <div class="eyebrow">场景</div>
+        <p>播客、访谈、发布会这类长对话视频，在竖屏平台上通常被切成 30–60 秒的观点片段。剪辑师要先通读整场挑出能单独成立的段落，再一帧帧把画面对准正在说话的人。</p>
+        <p class="muted">难点：两三个人同框时，竖屏只放得下一个人。该看谁取决于此刻谁在说话，而说话人经常不在画面里。</p>
+        <ul class="needs">
+          <li><span><b>找观点：</b>从 30 分钟对话里挑出能独立成立的观点或故事，开头结尾不断在半句话上。</span></li>
+          <li><span><b>跟说话人：</b>每一帧对准正在说话的人；说话人不在画面里时，对准最相关的听众。</span></li>
+          <li><span><b>切而不扫：</b>换人时直接切过去，不左右横扫；一个人说话时画面稳住不动。</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="score" id="tScore"></div>
+  </header>
+
+  <section>
+    <div class="eyebrow">和足球有什么不同</div>
+    <h2>同一套方法，换三处</h2>
+    <div class="tablewrap"><table class="diff">
+      <thead><tr><th>环节</th><th>足球赛事</th><th>口播访谈</th></tr></thead>
+      <tbody>
+        <tr><td>找片段</td><td>解说关键词和欢呼声召回，Drex 看 8 帧画面确认是不是进球</td><td>NDI 转写带说话人分离；转写按句编号放进 Drex，给 70 个 25–60 秒的窗口逐个打分，再让 Drex 选从哪一句开始、到哪一句结束</td></tr>
+        <tr><td>每帧看哪里</td><td>Drex 在栅格上选出球和相关球员的范围</td><td>Drex 先回答说话人在画面左、中还是右，再在栅格上框出这个人的头和肩</td></tr>
+        <tr><td>运镜</td><td>平滑跟随，球必须在框内</td><td>画面基本静止，脸必须在框内；同一镜头里换人说话时直接切，不横扫</td></tr>
+      </tbody>
+    </table></div>
+    <ol class="flow" aria-label="口播处理流程">
+      <li><b>NDI</b><span>转写 + 说话人分离</span></li>
+      <li><b>Drex · 文本</b><span>70 个窗口打分</span></li>
+      <li><b>Drex · 文本</b><span>选开头和结尾句</span></li>
+      <li><b>Drex · 画面</b><span>每 0.5 秒：谁在说、框头肩</span></li>
+      <li><b>本地</b><span>换人硬切、单人静止</span></li>
+    </ol>
+  </section>
+
+  <section>
+    <div class="eyebrow">短视频</div>
+    <h2>5 条竖屏输出</h2>
+    <p class="muted">每条右侧是调试视图（黄框为 Drex 框出的说话人，青框为最终裁切）和说话人时间轴。原片本身已经剪辑过，镜头切换大多正好落在换人的时刻，所以虚拟切换这一次没有触发。</p>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--spk-a)"></i>说话人 A</span>
+      <span><i class="sw" style="background:var(--spk-b)"></i>说话人 B</span>
+      <span><i class="sw" style="background:var(--spk-c)"></i>说话人 C</span>
+      <span><i class="sw" style="border-left:2px dashed var(--muted);width:2px;height:12px"></i>原片镜头切换</span>
+    </div>
+    <div class="clips" id="tClips"></div>
+  </section>
+
+  <section>
+    <div class="eyebrow">成本与延迟</div>
+    <h2>整场 30 分钟的账单</h2>
+    <div class="tablewrap"><table id="tCost"></table></div>
+    <p class="muted" style="font-size:13px">NDI 按音频分钟计费（每分钟 $0.0035）；Drex Max v1.1 每百万输入 token $0.03。本地 Whisper 断句、切镜头和渲染不计入。</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">已知问题</div>
+    <h2>还没解决的</h2>
+    <ul class="notes">
+      <li><b>有的片段从半句话开始。</b>NDI 的分段较粗（中位数约 17 秒），所以用本地 Whisper 断句；但 Whisper 这次几乎没输出标点，切出的“句子”不完整，Drex 只能在里面挑。下一步：用词级时间戳和更大的模型重新断句。</li>
+      <li><b>换人瞬间可能停在两人中间。</b>例如第 1 条开头：说话人刚换、原片还没切镜头的约 1.5 秒里，裁切框停在两人之间。</li>
+      <li><b>说话人跟随只抽查了 2 条。</b>没有人工标注，判断依据是调试视频目测。</li>
+      <li><b>虚拟切换没有经过验证。</b>它为单机位、未剪辑的素材设计，这条素材用不上，需要换一段单机位双人对话来测。</li>
+    </ul>
+  </section>
+  </div>
 </div>
 
 <script>
@@ -353,8 +495,8 @@ const [w0, w1] = S.window.split("–").map(parse);
 const pct = t => ((t - w0) / (w1 - w0) * 100).toFixed(2) + "%";
 const KN = [[4885,"73′ 进球"],[5167,"77′ 红牌"],[5653,"85′ 扳平"],[6062,"92′ 绝杀"]];
 let tl = "";
-for (let t = w0; t <= w1; t += 300) tl += `<span class="tick" style="left:${pct(t)}">${new Date(t*1000).toISOString().slice(11,16)}</span>`;
-KN.forEach(([t, n]) => tl += `<div class="known" style="left:${pct(t)}"><i>${n}</i></div>`);
+for (let t = w0; t <= w1; t += 300) tl += `<span class="tick" style="left:${pct(t)}${t + 300 > w1 ? ";transform:translateX(-100%)" : t === w0 ? ";transform:none" : ""}">${new Date(t*1000).toISOString().slice(11,16)}</span>`;
+KN.forEach(([t, n]) => tl += `<div class="known" style="left:${pct(t)}"><i${(t - w0) / (w1 - w0) > 0.85 ? ' style="left:auto;right:4px"' : ""}>${n}</i></div>`);
 D.cands.forEach(c => tl += `<div class="cand" style="left:${pct(parse(c.t))}" title="${esc(c.t+" "+c.event_zh)}"></div>`);
 D.clips.forEach(c => tl += `<div class="clip" style="left:${pct(c.clip[0])};width:calc(${pct(c.clip[1])} - ${pct(c.clip[0])})"></div>`);
 $("#tl").insertAdjacentHTML("beforeend", tl);
@@ -450,6 +592,67 @@ if (CMP) {
   };
   $("#cmpChips").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; ci = +b.dataset.i; renderTrio(); });
   renderTrio();
+}
+
+
+// ---- case switch (hash: #football / #interview)
+function showCase() {
+  const k = location.hash === "#interview" ? "interview" : "football";
+  ["football", "interview"].forEach(c => {
+    $("#case-" + c).hidden = c !== k;
+    $("#tab-" + c).setAttribute("aria-selected", String(c === k));
+  });
+  document.querySelectorAll("video").forEach(v => { if (v.closest(".case").hidden) v.pause(); });
+}
+window.addEventListener("hashchange", showCase);
+showCase();
+
+// ---- interview
+const T = __TALK__;
+if (T) {
+  const usd = v => "$" + (v < 0.01 ? v.toFixed(4) : v.toFixed(3));
+  $("#tScore").innerHTML = [
+    [`${T.clips.length}`, "条竖屏短视频（19–37 秒）"],
+    [usd(T.cost.total), `总模型费用（NDI ${usd(T.cost.ndi)} + Drex ${usd(T.cost.drex)}）`],
+    [`${Math.round(T.time.total / 60 * 10) / 10} 分钟`, "处理 30 分钟视频的总耗时"],
+    [`${T.windows}`, "个候选窗口由 Drex 打分"],
+  ].map(([b, t]) => `<div><b>${b}</b><span>${t}</span></div>`).join("");
+  $("#tCost").innerHTML = `<thead><tr><th>环节</th><th class="n">调用</th><th class="n">计费量</th><th class="n">耗时</th><th class="n">费用</th></tr></thead><tbody>` +
+    T.cost.rows.map(r => `<tr><td>${esc(r[0])}</td><td class="n">${r[1]}</td><td class="n">${esc(r[2])}</td><td class="n">${esc(r[3])}</td><td class="n">${usd(r[4])}</td></tr>`).join("") + `</tbody>`;
+  const SPK = ["var(--spk-a)", "var(--spk-b)", "var(--spk-c)", "var(--muted)"];
+  const WHO_Y = {left: 0, center: 1, right: 2};
+  function lanes(c) {
+    const VW = 800, L = 150, R = 10, X = t => L + t / c.dur_s * (VW - L - R);
+    const rowsY = {spk: 14, who: 52, crop: 112}, VH = 168;
+    let s = `<svg viewBox="0 0 ${VW} ${VH}" class="lanes" role="img" aria-label="说话人时间轴：NDI 说话人分段、Drex 判断的说话人位置、竖屏裁切位置">`;
+    s += `<text x="0" y="${rowsY.spk + 13}" class="lab">谁在说话 · NDI</text>`;
+    c.turns.forEach(([a, b, k]) => s += `<rect x="${X(a)}" y="${rowsY.spk}" width="${Math.max(1, X(b) - X(a))}" height="18" rx="3" style="fill:${SPK[k]}"/>`);
+    s += `<text x="0" y="${rowsY.who + 20}" class="lab">说话人在哪 · Drex</text>`;
+    ["左", "中", "右"].forEach((n, i) => s += `<text x="${L - 6}" y="${rowsY.who + i * 14 + 9}" text-anchor="end" class="ax">${n}</text>`);
+    c.who.forEach(([t, w]) => { if (w in WHO_Y) s += `<rect x="${X(t) - 2.5}" y="${rowsY.who + WHO_Y[w] * 14}" width="5" height="10" rx="1" style="fill:var(--ink);fill-opacity:.75"/>`; });
+    s += `<text x="0" y="${rowsY.crop + 12}" class="lab">竖屏取景 · 左→右</text>`;
+    s += `<rect x="${L}" y="${rowsY.crop}" width="${VW - L - R}" height="34" style="fill:var(--bg)"/>`;
+    const pts = c.path.map(([t, x]) => `${X(t)},${rowsY.crop + 34 - x * 34}`);
+    s += `<polyline points="${pts.join(" ")}" style="fill:none;stroke:var(--crop);stroke-width:2.5"/>`;
+    c.cuts.forEach(t => s += `<line x1="${X(t)}" x2="${X(t)}" y1="6" y2="${VH - 18}" style="stroke:var(--muted)" stroke-dasharray="4 3"/>`);
+    for (let t = 0; t <= c.dur_s; t += 5) s += `<text x="${X(t)}" y="${VH - 4}" text-anchor="middle" class="ax">${t}s</text>`;
+    return s + `</svg>`;
+  }
+  $("#tClips").innerHTML = T.clips.map(c => `
+    <article class="row">
+      <video class="vert" src="media/${c.v}" poster="media/${c.p}" controls playsinline preload="none"></video>
+      <div class="meta">
+        <div class="top">
+          <span class="tc">${c.start}</span>
+          <span class="pill type">${c.dur} 秒</span>
+          <span class="pill type">${c.n_spk} 位说话人</span>
+          <span class="pill hit">Drex 评分 ${c.score.toFixed(2)} / 4</span>
+        </div>
+        <div class="quote"><span>开头</span><q>${esc(c.head)}</q><span>结尾</span><q>${esc(c.tail)}</q></div>
+        <video src="media/${c.d}" poster="media/${c.dp}" controls playsinline muted preload="none" style="max-width:100%"></video>
+        <div class="chart">${lanes(c)}</div>
+      </div>
+    </article>`).join("");
 }
 
 // gallery
