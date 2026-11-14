@@ -24,14 +24,14 @@ import scene_svg  # noqa: E402
 
 # Ground truth for the El Clásico window, from the broadcast commentary (transcript) + match record.
 KNOWN = [
-    (4885, "73′ 拉基蒂奇进球"),
-    (5167, "77′ 拉莫斯红牌"),
-    (5653, "85′ J 罗扳平"),
-    (6062, "92′ 梅西绝杀"),
+    (4885, "73′ Rakitić goal"),
+    (5167, "77′ Ramos red card"),
+    (5653, "85′ James equalizer"),
+    (6062, "92′ Messi winner"),
 ]
-EVENT_ZH = {"goal": "进球", "own_goal": "乌龙球", "big_chance": "射门 / 机会", "card": "红黄牌",
-            "skill": "精彩个人表现", "foul_or_stoppage": "犯规 / 停顿", "none": "无事件"}
-CAT_ZH = {"wide": "远景", "closeup": "特写", "replay": "回放"}
+EVENT_ZH = {"goal": "Goal", "own_goal": "Own goal", "big_chance": "Shot / chance", "card": "Card",
+            "skill": "Skill move", "foul_or_stoppage": "Foul / stoppage", "none": "No event"}
+CAT_ZH = {"wide": "Wide", "closeup": "Close-up", "replay": "Replay"}
 
 
 def sh(*a):
@@ -42,11 +42,11 @@ def verdict(e):
     t = e["t_peak"]
     for kt, name in KNOWN:
         if abs(t - kt) <= 15:
-            return "hit", f"命中：{name}"
+            return "hit", f"Hit: {name}"
     for kt, name in KNOWN:
         if 0 < t - kt <= 90:
-            return "dup", f"重复：{name}之后的回放或庆祝"
-    return "extra", "额外候选（不在 4 个关键事件内）"
+            return "dup", f"Duplicate: replay or celebration after {name}"
+    return "extra", "Extra candidate (not one of the 4 key events)"
 
 
 def main():
@@ -76,6 +76,8 @@ def main():
            "-crf", "28", "-preset", "veryfast", "-c:a", "aac", "-b:a", "64k", "-movflags", "+faststart", str(vo))
         sh("ffmpeg", "-y", "-loglevel", "error", "-i", str(d), "-an", "-c:v", "libx264", "-crf", "28",
            "-preset", "veryfast", "-movflags", "+faststart", str(do))
+        sh("ffmpeg", "-y", "-loglevel", "error", "-ss", "8", "-i", str(do), "-frames:v", "1", "-q:v", "6",
+           str(out / "media" / f"dp{ei:02d}.jpg"))
         poster = out / "media" / f"p{ei:02d}.jpg"
         sh("ffmpeg", "-y", "-loglevel", "error", "-ss", "8", "-i", str(vo), "-frames:v", "1", "-q:v", "6", str(poster))
         kind, note = verdict(e)
@@ -125,7 +127,7 @@ def main():
         b["in"] += (u.get("usage") or {}).get("input_tokens", 0) or 0
         b["img"] += (u.get("usage") or {}).get("image_tokens", 0) or 0
         b["lat"].append(u["latency_s"])
-    tag_zh = {"s1_confirm": "s1 事件确认", "s3_keyframes": "s3 关键帧裁切", f"gridexp_{a.variant}": "栅格实验（30 帧）"}
+    tag_zh = {"s1_confirm": "s1 event confirmation", "s3_keyframes": "s3 keyframe crop", f"gridexp_{a.variant}": "Grid experiment (30 frames)"}
     cost_rows = []
     for t, b in by_tag.items():
         lat = sorted(b["lat"])
@@ -172,7 +174,22 @@ def main():
                 sh("ffmpeg", "-y", "-loglevel", "error", "-ss", "8", "-i", str(out / "media" / v), "-frames:v", "1",
                    "-q:v", "6", str(out / "media" / v.replace(".mp4", ".jpg")))
             ev = events[ei]
-            c["label"] = verdict(ev)[1].replace("命中：", "")
+            c["label"] = verdict(ev)[1].replace("Hit: ", "")
+    # ---- per-clip Drex vs Gemini numbers for the football rows
+    s3fb = json.loads((run / "s3.json").read_text())
+    n_kf_all = sum(len(v) for v in s3fb.values())
+    tok_kf, sec_kf = drex_per_kf("s3_keyframes", n_kf_all, timing.get("s3", 0), n_kf_all)
+    cmp_by = {c["event_index"]: c for c in (cmp or {}).get("clips", [])}
+    for c in data["clips"]:
+        plan_c = json.loads((run / f"plan_{c['i']:02d}.json").read_text())
+        c["track"] = kf_track(s3fb.get(str(c["i"]), []), plan_c, plan_c["clip"][0])
+        nk = len(s3fb.get(str(c["i"]), []))
+        c["drex_n"] = {"usd": nk * tok_kf * PRICE_DREX, "t": nk * sec_kf, "tokens": round(nk * tok_kf)}
+        c["gem"] = gem_media(ROOT / "runs" / "gemini_aligned_clasico", c["i"], out, "fg_v")
+        m = cmp_by.get(c["i"])
+        if m:
+            c["acc"] = {"drex": [m["drex"]["ball_in_ref_drex"], m["drex"]["ball_in_ref_gemini"]],
+                        "gemini": [m["gemini"]["ball_in_ref_drex"], m["gemini"]["ball_in_ref_gemini"]]}
     talk = build_talk(out)
     tpl = (ROOT / "scripts" / "report_template.html").read_text()
     page = (tpl.replace("__DATA__", json.dumps(data, ensure_ascii=False))
@@ -190,6 +207,55 @@ def main():
     (out / "files.json").write_text(json.dumps({f"media/{f}": str(out / "media" / f) for f in files}, indent=1))
     total = sum((out / "media" / f).stat().st_size for f in files)
     print(f"page ok: {len(clips)} clips, {len(grecs)} grid frames, media {total/1e6:.1f} MB in {len(files)} files")
+
+
+def kf_track(kfs, plan, c0, talk=False):
+    """Per-keyframe Drex intermediate results in grid units (16 x 9 cells), for the live panel."""
+    W, H, fps = plan["W"], plan["H"], plan["fps"]
+    rows = []
+    for k in kfs:
+        gx, gy = 16 / k["kf_W"], 9 / k["kf_H"]
+        x0, y0, x1, y1 = k["region_kf"]
+        f = k.get("focus_kf") or {}
+        i = min(max(int(round((k["t"] - c0) * fps)), 0), len(plan["cx"]) - 1)
+        sp = k.get("shot_probs") or {}
+        r = {"t": round(k["t"] - c0, 2), "shot": k["shot"], "shot_p": round(max(sp.values()), 2) if sp else None,
+             "x": [round(x0 * gx, 1), round(x1 * gx, 1)], "y": [round(y0 * gy, 1), round(y1 * gy, 1)],
+             "f": [round(f["x"] * gx, 1), round(f["y"] * gy, 1)] if f else None,
+             "u": round(k["x_unc_kf"] * gx, 1),
+             "c": [round(plan["cx"][i] / W * 16, 1), round(plan["h"][i] / H, 2), round(plan["cx"][i])]}
+        if talk:
+            wp = k.get("who_probs") or {}
+            r["who"], r["who_p"] = k.get("who"), round(max(wp.values()), 2) if wp else None
+        rows.append(r)
+    return rows
+
+
+PRICE_DREX = 0.03 / 1e6  # drex-max-v1.1: 30 nUSD per input token
+
+
+def gem_media(gem_run: Path, ei: int, out: Path, tag: str):
+    """Re-encode one Gemini-directed vertical clip for the page; return its media names + cost/time."""
+    src = gem_run / f"event_{ei:02d}_vertical.mp4"
+    sm = {e["event_index"]: e for e in json.loads((gem_run / "summary.json").read_text())} \
+        if (gem_run / "summary.json").exists() else {}
+    if not src.exists() or ei not in sm:
+        return None
+    v, p = f"{tag}{ei:02d}.mp4", f"{tag}{ei:02d}.jpg"
+    sh("ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-vf", "scale=360:640", "-c:v", "libx264", "-crf", "28",
+       "-preset", "veryfast", "-an", "-movflags", "+faststart", str(out / "media" / v))
+    sh("ffmpeg", "-y", "-loglevel", "error", "-ss", "6", "-i", str(out / "media" / v), "-frames:v", "1", "-q:v", "6",
+       str(out / "media" / p))
+    e = sm[ei]
+    return {"v": v, "p": p, "usd": e["usd"] or 0.0, "t": e["upload_s"] + e["decide_s"],
+            "tokens": (e["usage"] or {}).get("total_input_tokens", 0)}
+
+
+def drex_per_kf(tag: str, n_kf_logged: int, wall_s: float, n_kf_wall: int):
+    """Drex calls are 8-frame batches across clips, so per-clip cost/time is allocated by keyframes."""
+    usage = [json.loads(l) for l in (ROOT / "runs" / "usage.jsonl").read_text().splitlines() if l.strip()]
+    tok = sum((u["usage"] or {}).get("input_tokens", 0) for u in usage if u["tag"] == tag)
+    return tok / max(n_kf_logged, 1), wall_s / max(n_kf_wall, 1)
 
 
 def build_talk(out: Path, name: str = "interview"):
@@ -231,6 +297,41 @@ def build_talk(out: Path, name: str = "interview"):
             "path": [[round(i / plan["fps"], 2), round(plan["cx"][i] / plan["W"], 3)] for i in range(0, len(plan["cx"]), 6)],
             "dur_s": round(c1 - c0, 2),
         })
+    # per-clip Drex vs Gemini (same clips, same locked planner)
+    import eval_talk
+    gem_run = ROOT / "runs" / "gemini_aligned_interview"
+    n_kf_full = sum(len(v) for v in s3.values())
+    extra = sum(len(v) for f in run.glob("s3_only_*.json") for v in json.loads(f.read_text()).values())
+    tok_kf, sec_kf = drex_per_kf("talk_s3", n_kf_full + extra, json.loads((run / "timing.json").read_text()).get("s3", 0), n_kf_full)
+    agg_rows = {"drex": [], "gemini": []}
+    for ci, c in enumerate(clips):
+        plan_c = json.loads((run / f"plan_{ci:02d}.json").read_text())
+        c["track"] = kf_track(s3[str(ci)], plan_c, plan_c["clip"][0], talk=True)
+        nk = len(s3[str(ci)])
+        c["drex_n"] = {"usd": nk * tok_kf * PRICE_DREX, "t": nk * sec_kf, "tokens": round(nk * tok_kf)}
+        c["gem"] = gem_media(gem_run, ci, out, "tg_v")
+        gp, gk = gem_run / f"event_{ci:02d}_plan.json", gem_run / f"event_{ci:02d}_keyframes.json"
+        if c["gem"] and gp.exists():
+            dplan = json.loads((run / f"plan_{ci:02d}.json").read_text())
+            gplan = json.loads(gp.read_text())
+            gkfs = json.loads(gk.read_text())
+            md_d, md_g = eval_talk.metrics(dplan, s3[str(ci)]), eval_talk.metrics(dplan, gkfs)
+            mg_d, mg_g = eval_talk.metrics(gplan, s3[str(ci)]), eval_talk.metrics(gplan, gkfs)
+            c["acc"] = {"drex": [md_d["face_in"], md_g["face_in"]], "gemini": [mg_d["face_in"], mg_g["face_in"]]}
+            for k, m_ref_d, m_ref_g, cost in (("drex", md_d, md_g, c["drex_n"]), ("gemini", mg_d, mg_g, c["gem"])):
+                agg_rows[k].append({"dur": m_ref_d["dur"], "face_d": m_ref_d["face_in"], "face_g": m_ref_g["face_in"],
+                                    "pan": m_ref_d["pan_px_per_min"], "usd": cost["usd"], "t": cost["t"],
+                                    "cuts": len((dplan if k == "drex" else gplan)["cuts"])})
+    vs = None
+    if agg_rows["gemini"]:
+        def summ(rows):
+            D = sum(r["dur"] for r in rows)
+            return {"face_d": sum(r["face_d"] * r["dur"] for r in rows) / D,
+                    "face_g": sum(r["face_g"] * r["dur"] for r in rows) / D,
+                    "pan": sum(r["pan"] * r["dur"] for r in rows) / D,
+                    "cuts_per_min": sum(r["cuts"] for r in rows) / D * 60,
+                    "usd": sum(r["usd"] for r in rows) / len(rows), "t": sum(r["t"] for r in rows) / len(rows)}
+        vs = {"drex": summ(agg_rows["drex"]), "gemini": summ(agg_rows["gemini"]), "n": len(agg_rows["gemini"])}
     usage = [json.loads(l) for l in (ROOT / "runs" / "usage.jsonl").read_text().splitlines() if l.strip()]
     def agg(tag):
         us = [u for u in usage if u["tag"] == tag]
@@ -242,15 +343,16 @@ def build_talk(out: Path, name: str = "interview"):
     n1, t1, l1 = agg("talk_s1")
     n2, t2, l2 = agg("talk_s1_edges")
     n3, t3, _ = agg("talk_s3")
+    # the s3 log also holds a one-clip trial run; count only the full run
+    n3, t3 = round(n3 * n_kf_full / (n_kf_full + extra)), round(tok_kf * n_kf_full)
     timing = json.loads((run / "timing.json").read_text())
-    rows = [["NDI 转写 + 说话人分离（3 段 × 10 分钟，并行）", 3, "30 分钟音频", "约 25s", ndi_usd],
-            ["Drex · 候选窗口打分（文本）", n1, f"{t1:,} token", f"{l1:.0f}s", t1 * PRICE],
-            ["Drex · 选开头和结尾句（文本）", n2, f"{t2:,} token", f"{l2:.0f}s", t2 * PRICE],
-            ["Drex · 逐帧判断说话人和取景（画面）", n3, f"{t3:,} token", f"{timing.get('s3', 0):.0f}s", t3 * PRICE]]
+    rows = [["NDI transcription + diarization (3 × 10 min, parallel)", 3, "30 min audio", "~25s", ndi_usd],
+            ["Drex · score candidate windows (text)", n1, f"{t1:,} token", f"{l1:.0f}s", t1 * PRICE],
+            ["Drex · pick opening and closing sentences (text)", n2, f"{t2:,} token", f"{l2:.0f}s", t2 * PRICE],
+            ["Drex · per-frame speaker and framing (vision)", n3, f"{t3:,} token", f"{timing.get('s3', 0):.0f}s", t3 * PRICE]]
     drex_usd = (t1 + t2 + t3) * PRICE
     s1 = json.loads((run / "s1.json").read_text())
     # camera stability: first version (smoothed follow, saved in follow_v1/) vs current locked framing
-    import eval_talk
     def stab(fmt_):
         rows = []
         for ci in range(len(events)):
@@ -261,7 +363,7 @@ def build_talk(out: Path, name: str = "interview"):
         return {k: sum(r[k] * r["dur"] for r in rows) / D for k in ("pan_px_per_min", "swings_per_min", "moving_share", "face_in")}
     stability = {"follow": stab("follow_v1/plan_{:02d}.json"), "locked": stab("plan_{:02d}.json")} \
         if (run / "follow_v1").exists() else None
-    return {"clips": clips, "windows": len(s1), "stability": stability,
+    return {"clips": clips, "windows": len(s1), "stability": stability, "vs": vs,
             "cost": {"rows": rows, "ndi": ndi_usd, "drex": drex_usd, "total": ndi_usd + drex_usd},
             # measured wall-clock of the runs: s0+NDI ~55s, Whisper sentences + s1 ~48s, s3 + render ~108s
             "time": {"total": 55 + 48 + 108}}

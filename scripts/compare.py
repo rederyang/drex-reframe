@@ -77,7 +77,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--drex-run", default="clasico")
     ap.add_argument("--gemini-run", default="gemini_aligned_clasico")
-    ap.add_argument("--events", default="1,3,5,6")
+    ap.add_argument("--events", default="", help="default: every clip that has a Gemini plan")
     a = ap.parse_args()
     drex = ROOT / "runs" / a.drex_run
     gem = ROOT / "runs" / a.gemini_run
@@ -90,7 +90,8 @@ def main():
     n_clips_s3 = len(s3)
     timing = json.loads((drex / "timing.json").read_text())
     gsum = {e["event_index"]: e for e in json.loads((gem / "summary.json").read_text())}
-    idx = [int(x) for x in a.events.split(",")]
+    idx = ([int(x) for x in a.events.split(",")] if a.events
+           else sorted(i for i in gsum if (gem / f"event_{i:02d}_plan.json").exists()))
 
     acc = {m: {"in_d": 0, "n_d": 0, "in_g": 0, "n_g": 0, "sw": 0, "dur": 0.0} for m in ("center", "gemini", "drex")}
     clips = []
@@ -134,7 +135,7 @@ def main():
                             "usd_per_m_input": DREX_USD_PER_M_INPUT})
 
     # event discovery comparison (temporal grounding)
-    known = [(4885, "73′ 拉基蒂奇进球"), (5167, "77′ 拉莫斯红牌"), (5653, "85′ J 罗扳平"), (6062, "92′ 梅西绝杀")]
+    known = [(4885, "73′ Rakitić goal"), (5167, "77′ Ramos red card"), (5653, "85′ James equalizer"), (6062, "92′ Messi winner")]
     b1 = ROOT / "runs" / "gemini_hydrogen_clasico_static_v1"
     b1_events = json.loads((b1 / "events.json").read_text())
     b1_usage = [json.loads(l) for l in (b1 / "usage.jsonl").read_text().splitlines() if l.strip()]
@@ -156,7 +157,7 @@ def main():
         "drex": {"found_on_time": len(drex_found), "of": 4, "calls": len(s1u),
                  "tokens": sum((u["usage"] or {}).get("input_tokens", 0) for u in s1u),
                  "usd": sum((u["usage"] or {}).get("input_tokens", 0) for u in s1u) * DREX_USD_PER_M_INPUT / 1e6,
-                 "latency_s": timing.get("s1", 0) + 70.0, "latency_note": "s0 本地转写约 70s + s1 26s"},
+                 "latency_s": timing.get("s1", 0) + 70.0, "latency_note": "s0 local transcription ~70s + s1 26s"},
         "gemini": {"picked": len(b1_events), "on_time": sum(abs(g["err_s"]) <= 15 for g in gem_ev),
                    "calls": 1, "tokens": b1_ev["usage"]["total_input_tokens"], "latency_s": b1_ev["elapsed_s"],
                    "usd": (api_cost_estimate(b1_ev["usage"], "gemini-4-hydrogen") or {}).get("usd"),
