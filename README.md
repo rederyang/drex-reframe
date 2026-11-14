@@ -176,12 +176,3 @@ The live app reads **only this clone's** `.env` or `NACE_API_KEY` environment va
 Run `python -m unittest discover -s tests -v` in the live environment to verify assets, decoding, rendering and UI behavior. The parity check against the original main stage is skipped only when its baseline commit is absent from a source export or shallow clone.
 
 Maintainers can regenerate input clips with `python scripts/package_demo_assets.py --source-scene /path/to/original/scene1`. This command needs the original video **only for regeneration**, not for running either demo.
-
-## Known issues
-
-- **Duplicate clips.** In football, a replay or celebration after a goal is also labeled "goal". Next: dedup same-type events within 90 s.
-- **Fast close-ups.** Drex can misread fast-moving close-ups (about 200 px off on one celebration). Next: a face-detector fallback when Drex is uncertain, and a coarse-to-fine zoom for the ball in wide shots.
-- **No ground truth.** All accuracy numbers are measured against model readings, not human labels. `tools/label.html` exists for labeling.
-- **Recall tuned on the test match.** The football recall keywords were tuned on this match; validate on Belgium vs Japan.
-- **Mid-sentence starts.** Some interview clips start mid-sentence, because Whisper produced almost no punctuation on this audio. Next: word timestamps or a larger model.
-- **Virtual speaker cuts untested.** They target single-camera, unedited footage, which hasn't been tested yet.
