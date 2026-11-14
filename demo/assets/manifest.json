@@ -1,0 +1,87 @@
+{
+  "version": 1,
+  "dataset": "Scene1 / 2017 El Clásico",
+  "pipeline_base": "ab86fd8a75bff844b0fc77c73ef5340e5dfdc80a",
+  "clips": [
+    {
+      "id": "wing",
+      "label": "Wing play · 00:12",
+      "file": "scene1/wing.mp4",
+      "scene_start": 12.0,
+      "source_start": 4362.0,
+      "duration": 4.0,
+      "W": 1280,
+      "H": 720,
+      "fps": 25.0,
+      "cuts": [],
+      "sha256": "86c8ccf6db924de5150d61c405ee6a2efd783746a34f7df3ef4360601c2c8b75"
+    },
+    {
+      "id": "wide",
+      "label": "Wide play · 00:32",
+      "file": "scene1/wide.mp4",
+      "scene_start": 32.0,
+      "source_start": 4382.0,
+      "duration": 4.0,
+      "W": 1280,
+      "H": 720,
+      "fps": 25.0,
+      "cuts": [],
+      "sha256": "12dbc375ed0d73696df0734a3dac1caaeec7dd4dd120ede52881b5851062bbcd"
+    },
+    {
+      "id": "touchline",
+      "label": "Touchline · 01:00",
+      "file": "scene1/touchline.mp4",
+      "scene_start": 60.0,
+      "source_start": 4410.0,
+      "duration": 4.0,
+      "W": 1280,
+      "H": 720,
+      "fps": 25.0,
+      "cuts": [
+        0.9600000000000364
+      ],
+      "sha256": "063bde850651aa9eccdea40e71d9b3e732bce0111c27afd67b56c09972a94744"
+    },
+    {
+      "id": "goal",
+      "label": "Goal area · 02:00",
+      "file": "scene1/goal.mp4",
+      "scene_start": 120.0,
+      "source_start": 4470.0,
+      "duration": 4.0,
+      "W": 1280,
+      "H": 720,
+      "fps": 25.0,
+      "cuts": [],
+      "sha256": "4e238d61c8c3b35caa812451c413ea4e84b4d9e6b1cfc8c27a910a6ed67d7f9b"
+    },
+    {
+      "id": "midfield",
+      "label": "Midfield · 05:00",
+      "file": "scene1/midfield.mp4",
+      "scene_start": 300.0,
+      "source_start": 4650.0,
+      "duration": 4.0,
+      "W": 1280,
+      "H": 720,
+      "fps": 25.0,
+      "cuts": [],
+      "sha256": "7a0e57fe2d8a5895ab61be3f5e903e1ace4bfbe3c22d6611e60966518c7473e5"
+    },
+    {
+      "id": "goal-view",
+      "label": "Goal view · 10:00",
+      "file": "scene1/goal-view.mp4",
+      "scene_start": 600.0,
+      "source_start": 4950.0,
+      "duration": 4.0,
+      "W": 1280,
+      "H": 720,
+      "fps": 25.0,
+      "cuts": [],
+      "sha256": "fb302e1c90c8594c97f16f85ba4cffdf8372f2e2de28623201720655f63ce5de"
+    }
+  ]
+}

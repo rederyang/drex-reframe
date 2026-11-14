@@ -249,6 +249,52 @@ def kf_questions(k: int) -> dict:
     return q
 
 
+def prepare_keyframe_batch(frames: list, viewing_goal: str | None = None) -> dict:
+    """Build the s3 request, optionally adding a user viewing preference to state.
+
+    With no goal the payload matches the existing pipeline. The numbered grid,
+    seven questions per frame, probability decoding and focus point are shared.
+    """
+    if not 1 <= len(frames) <= BATCH:
+        raise ValueError(f"A keyframe batch must contain 1 to {BATCH} frames")
+    if viewing_goal is not None and (not isinstance(viewing_goal, str) or len(viewing_goal) > 2000):
+        raise ValueError("Viewing goal must be text of at most 2000 characters")
+    images = [GRID.draw(image) for _, image in frames]
+    questions = {}
+    for k in range(1, len(frames) + 1):
+        questions.update(kf_questions(k))
+    state = (f"{len(frames)} consecutive frames (Image 1..Image {len(frames)}, {KF_STEP}s apart) from a "
+             f"football broadcast that will be reframed to a 9:16 vertical crop. Use the sequence "
+             f"to understand where the play is going.")
+    if viewing_goal and viewing_goal.strip():
+        state += (f" Viewing goal: {viewing_goal.strip()} "
+                  "Use this preference within the must-keep region definition. Rely on visible evidence; "
+                  "do not invent offscreen subjects or events.")
+    return {"state": state, "questions": questions, "images": images}
+
+
+def detect_keyframe_batch(frames: list, viewing_goal: str | None = None, *, on_event=None) -> dict:
+    """Execute and decode one s3 batch for both the pipeline and the demo."""
+    prepared = prepare_keyframe_batch(frames, viewing_goal)
+    if on_event:
+        on_event("prepared", prepared)
+    response = drex(prepared["state"], prepared["questions"], prepared["images"], tag="s3_keyframes")
+    if on_event:
+        on_event("response", response)
+    W, H = frames[0][1].size
+    rows, decoded = [], []
+    for k, (t, _) in enumerate(frames, start=1):
+        dec = decode_region(response["answers"], GRID, W, H, prefix=f"f{k}_")
+        shot = response["answers"][f"f{k}_shot"]
+        rows.append({"t": t, "shot": shot["choice"], "shot_probs": shot["probabilities"],
+                     "region_kf": dec["region"], "focus_kf": dec.get("focus"), "x_unc_kf": dec["x_uncertainty_px"],
+                     "flags": dec["flags"], "kf_W": W, "kf_H": H})
+        decoded.append(dec)
+    if on_event:
+        on_event("decoded", rows)
+    return {"keyframes": rows, "decoded": decoded, "response": response, "prepared": prepared}
+
+
 def stage3(video: Path, s0: dict, events: list[dict], run: Path) -> dict:
     def build():
         out = {}
@@ -261,23 +307,8 @@ def stage3(video: Path, s0: dict, events: list[dict], run: Path) -> dict:
 
         def run_batch(job):
             ei, fr = job
-            imgs = [GRID.draw(im) for _, im in fr]
-            q = {}
-            for k in range(1, len(fr) + 1):
-                q.update(kf_questions(k))
-            state = (f"{len(fr)} consecutive frames (Image 1..Image {len(fr)}, {KF_STEP}s apart) from a "
-                     f"football broadcast that will be reframed to a 9:16 vertical crop. Use the sequence "
-                     f"to understand where the play is going.")
-            r = drex(state, q, imgs, tag="s3_keyframes")
-            W, H = fr[0][1].size
-            rows = []
-            for k, (t, _) in enumerate(fr, start=1):
-                dec = decode_region(r["answers"], GRID, W, H, prefix=f"f{k}_")
-                shot = r["answers"][f"f{k}_shot"]
-                rows.append({"t": t, "shot": shot["choice"], "shot_probs": shot["probabilities"],
-                             "region_kf": dec["region"], "focus_kf": dec.get("focus"), "x_unc_kf": dec["x_uncertainty_px"],
-                             "flags": dec["flags"], "kf_W": W, "kf_H": H})
-            return ei, rows, r.get("usage")
+            detected = detect_keyframe_batch(fr)
+            return ei, detected["keyframes"], detected["response"].get("usage")
 
         with ThreadPoolExecutor(2) as ex:
             for ei, rows, usage in ex.map(run_batch, jobs):
