@@ -246,7 +246,7 @@ def stage3(video: Path, s0: dict, events: list[dict], run: Path) -> dict:
                 dec = decode_region(r["answers"], GRID, W, H, prefix=f"f{k}_")
                 shot = r["answers"][f"f{k}_shot"]
                 rows.append({"t": t, "shot": shot["choice"], "shot_probs": shot["probabilities"],
-                             "region_kf": dec["region"], "x_unc_kf": dec["x_uncertainty_px"],
+                             "region_kf": dec["region"], "focus_kf": dec.get("focus"), "x_unc_kf": dec["x_uncertainty_px"],
                              "flags": dec["flags"], "kf_W": W, "kf_H": H})
             return ei, rows, r.get("usage")
 
@@ -261,6 +261,10 @@ def stage3(video: Path, s0: dict, events: list[dict], run: Path) -> dict:
 
 # ---------------- s4 ----------------
 
+# Camera-path parameters (see plan_clip). Tuned by scripts/eval_path.py.
+P = {"tau_live": 0.8, "tau_close": 1.0, "dz_live": 0.04, "dz_close": 0.08,
+     "vcap_live": 0.9, "safe": 0.8, "ball_iters": 3}
+
 def plan_clip(s0: dict, ev: dict, kfs: list[dict], min_h_frac=0.55) -> dict:
     W, H, fps = s0["W"], s0["H"], s0["fps"]
     c0, c1 = ev["clip"]
@@ -270,6 +274,7 @@ def plan_clip(s0: dict, ev: dict, kfs: list[dict], min_h_frac=0.55) -> dict:
     bounds = [c0] + cuts + [c1]
     cx = np.zeros(n); cy = np.zeros(n); hh = np.zeros(n)
     shots = []
+    kf_log = []  # for the report's camera-path chart
     for s_a, s_b in zip(bounds[:-1], bounds[1:]):
         idx = np.where((times >= s_a) & (times < s_b))[0]
         if len(idx) == 0:
@@ -283,32 +288,67 @@ def plan_clip(s0: dict, ev: dict, kfs: list[dict], min_h_frac=0.55) -> dict:
             x0, y0, x1, y1 = [v * sx for v in k["region_kf"]]
             if k["shot"] in ("graphic", "crowd"):
                 x0, x1, y0, y1 = W * 0.3, W * 0.7, 0, H  # nothing to follow: wide centered
-            b = fit_vertical([x0, y0, x1, y1], W, H, min_h_frac=min_h_frac)
+            fk = k.get("focus_kf")
+            foc = (fk["x"] * sx, fk["y"] * sx) if fk and k["shot"] not in ("graphic", "crowd") else None
+            b = fit_vertical([x0, y0, x1, y1], W, H, min_h_frac=min_h_frac, focus=foc)
             sig = max(k["x_unc_kf"] * sx, 1.0)
             tgt.append((k["t"], b["cx"], b["cy"], b["h"], sig, b["flags"]))
         kt = [t[0] for t in tgt]
         sig = [t[4] for t in tgt]
         shot_type = max(set(k["shot"] for k in ks), key=[k["shot"] for k in ks].count)
-        # wide shots: gentle, closeups: hold steady
-        dz = 0.06 * W if shot_type == "wide" else 0.10 * W
+        live = shot_type in ("wide", "medium")
+        # dead zone: ignore keyframe jitter smaller than this (closeups hold steadier)
+        dz = (P["dz_live"] if live else P["dz_close"]) * W
         tx = deadzone([t[1] for t in tgt], dz)
         ty = deadzone([t[2] for t in tgt], 0.08 * H)
         th = deadzone([t[3] for t in tgt], 0.10 * H)
         t0 = times[idx[0]]
-        lam1, lam2 = 0.02, 2.0
-        px = solve_path(len(idx), fps, t0, kt, tx, sig, 20.0, lam1, lam2)
-        py = solve_path(len(idx), fps, t0, kt, ty, [s * H / W for s in sig], 20.0, lam1, lam2)
-        ph = solve_path(len(idx), fps, t0, kt, th, [s * H / W for s in sig], 20.0, lam1, lam2 * 4)
-        px = speed_cap(px, 0.45 * W / fps)   # <= 45% of frame width per second
-        py = speed_cap(py, 0.25 * H / fps)
+        # Smoothing strength from a time constant tau (seconds). Data weights are normalized to
+        # mean 1 so Drex confidence only sets *relative* trust between keyframes; the earlier
+        # absolute 1/sigma^2 weights (~5e-5) were ~40,000x weaker than the smoothness term,
+        # which flattened the camera path and let the ball leave the frame 37% of the time.
+        tau = P["tau_live"] if live else P["tau_close"]
+        lam2 = (tau * fps) ** 4 / (fps * KF_STEP)
+        nrm = lambda s: list(np.array(s) / np.sqrt(np.mean(np.square(s))))
+        sg = nrm(sig)
+        ph = solve_path(len(idx), fps, t0, kt, th, sg, 0.0, 0.0, lam2 * 4)
         ph = np.clip(speed_cap(ph, 0.25 * H / fps), min_h_frac * H, H)
+        py = speed_cap(solve_path(len(idx), fps, t0, kt, ty, sg, 0.0, 0.0, lam2), 0.25 * H / fps)
+        vcap = (P["vcap_live"] if live else 0.45) * W / fps
+        # Ball-in-frame constraint: wherever Drex's focus point (ball / face) falls outside the
+        # crop's safe zone, pin the camera there with a strong keyframe and re-solve.
+        fkt, fx = [], []
+        for k in ks:
+            fk = k.get("focus_kf")
+            if fk and k["shot"] not in ("graphic", "crowd"):
+                fkt.append(k["t"]); fx.append(fk["x"] * sx)
+        ckt, cv, cs = list(kt), list(tx), list(sg)
+        px = speed_cap(solve_path(len(idx), fps, t0, ckt, cv, cs, 0.0, 0.0, lam2), vcap)
+        for _ in range(P["ball_iters"]):
+            added = 0
+            for t, f in zip(fkt, fx):
+                j = int(round((t - t0) * fps))
+                if not 0 <= j < len(idx):
+                    continue
+                w = ph[j] * ASPECT
+                safe = P["safe"] * w / 2
+                if abs(f - px[j]) > safe:
+                    ckt.append(t); cv.append(f - np.sign(f - px[j]) * safe * 0.8); cs.append(0.15)
+                    added += 1
+            if not added:
+                break
+            px = speed_cap(solve_path(len(idx), fps, t0, ckt, cv, cs, 0.0, 0.0, lam2), vcap)
+        pinned = set(ckt[len(kt):])
+        for t, raw in zip(kt, tgt):
+            f = next((x for tt, x in zip(fkt, fx) if tt == t), None)
+            kf_log.append({"t": t, "target": raw[1], "focus": f, "pinned": t in pinned})
         for j, i in enumerate(idx):
             cx[i], cy[i] = clamp_center(px[j], py[j], ph[j], W, H)
             hh[i] = ph[j]
         shots.append({"start": float(s_a), "end": float(s_b), "type": shot_type,
                       "too_wide_frac": float(np.mean(["too_wide" in t[5] for t in tgt]))})
     return {"clip": ev["clip"], "fps": fps, "W": W, "H": H, "cx": cx.tolist(), "cy": cy.tolist(),
-            "h": hh.tolist(), "shots": shots, "cuts": cuts}
+            "h": hh.tolist(), "shots": shots, "cuts": cuts, "kf": kf_log, "params": dict(P)}
 
 
 # ---------------- render ----------------

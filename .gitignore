@@ -4,3 +4,4 @@ samples/football-keyframes/videos/
 runs/
 __pycache__/
 *.pyc
+.DS_Store

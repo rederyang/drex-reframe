@@ -27,7 +27,7 @@ from reframe.grid import Grid, edge_questions, decode_region  # noqa: E402
 from reframe.nace import drex  # noqa: E402
 
 SAMPLES = ROOT / "samples" / "football-keyframes"
-VARIANTS = {"g16": (16, 9, False), "g32": (32, 18, False), "clean_g16": (16, 9, True)}
+VARIANTS = {"g16": (16, 9, False), "g16f": (16, 9, False), "g32": (32, 18, False), "clean_g16": (16, 9, True)}
 
 
 def run_one(row: dict, variant: str) -> dict:
@@ -44,7 +44,8 @@ def run_one(row: dict, variant: str) -> dict:
         state += " Image 1 is the clean frame; Image 2 is the identical frame with a reference grid."
     res = drex(state, edge_questions(grid, image_k=k), images, tag=f"gridexp_{variant}")
     dec = decode_region(res["answers"], grid, W, H)
-    box = fit_vertical(dec["region"], W, H)
+    foc = (dec["focus"]["x"], dec["focus"]["y"]) if dec.get("focus") else None
+    box = fit_vertical(dec["region"], W, H, focus=foc)
     return {"frame_id": row["frame_id"], "file": row["file"], "category": row["category"],
             "shot_scale": row["shot_scale"], "variant": variant, "W": W, "H": H,
             "answers": res["answers"], "usage": res.get("usage"), "latency_s": res["_latency_s"],
@@ -59,6 +60,9 @@ def overlay(rec: dict, out: Path) -> Image.Image:
     d.rectangle([x0, y0, x1, y1], outline=(255, 230, 0), width=4)
     bx = box_xyxy(rec["box"]["cx"], rec["box"]["cy"], rec["box"]["h"])
     d.rectangle(bx, outline=(0, 220, 255), width=4)
+    f = rec["decoded"].get("focus")
+    if f:
+        d.ellipse([f["x"] - 9, f["y"] - 9, f["x"] + 9, f["y"] + 9], outline=(255, 60, 60), width=4)
     e = rec["decoded"]["edges"]
     txt = (f"{rec['frame_id']}  L{e['left']['choice']} R{e['right']['choice']} "
            f"T{e['top']['choice']} B{e['bottom']['choice']}  ±{rec['decoded']['x_uncertainty_px']:.0f}px "

@@ -102,12 +102,23 @@ def edge_questions(grid: Grid, image_k: int = 1, prefix: str = "") -> dict:
                          "instructions": base + "Which lettered horizontal line is closest to the TOP edge of the must-keep region?"},
         f"{prefix}bottom": {"type": "choice", "criteria": ys,
                             "instructions": base + "Which lettered horizontal line is closest to the BOTTOM edge of the must-keep region?"},
+        # Focus point: used to center the crop when the region is wider than a 9:16 box can hold.
+        f"{prefix}focus_x": {"type": "choice", "criteria": xs,
+                             "instructions": base + "If only ONE spot could stay in view, it would be the ball (in live play) or the main person's face (in a close-up). Which numbered vertical line is closest to that spot?"},
+        f"{prefix}focus_y": {"type": "choice", "criteria": ys,
+                             "instructions": base + "If only ONE spot could stay in view, it would be the ball (in live play) or the main person's face (in a close-up). Which lettered horizontal line is closest to that spot?"},
     }
 
 
 def _stats(probs: dict, labels: list[str]) -> tuple[float, float, int]:
     """Expected index, std (in grid units), argmax index from a choice distribution."""
     p = [float(probs.get(l, 0.0)) for l in labels]
+    # Drex spreads a near-uniform floor (~0.01-0.03) over every label; with 17+ labels that tail
+    # drags the mean to the center and inflates std. Subtract the median as the floor first.
+    floor = sorted(p)[len(p) // 2]
+    q = [max(v - floor, 0.0) for v in p]
+    if sum(q) > 0:
+        p = q
     s = sum(p) or 1.0
     p = [v / s for v in p]
     mean = sum(i * v for i, v in enumerate(p))
@@ -137,4 +148,10 @@ def decode_region(answers: dict, grid: Grid, W: int, H: int, prefix: str = "") -
         flags.append("inverted_y")
         y0, y1 = min(y0, y1), max(y0, y1)
     unc = (out["left"]["std_px"] + out["right"]["std_px"]) / 2
-    return {"edges": out, "region": [x0, y0, x1, y1], "flags": flags, "x_uncertainty_px": unc}
+    focus = None
+    if f"{prefix}focus_x" in answers and f"{prefix}focus_y" in answers:
+        fx, fxs, _ = _stats(answers[f"{prefix}focus_x"].get("probabilities", {}), grid.xlabels)
+        fy, _, _ = _stats(answers[f"{prefix}focus_y"].get("probabilities", {}), grid.ylabels)
+        focus = {"x": grid.x_of(fx, W), "y": grid.y_of(fy, H), "x_std_px": grid.x_of(fxs, W)}
+    return {"edges": out, "region": [x0, y0, x1, y1], "flags": flags, "x_uncertainty_px": unc,
+            "focus": focus}
