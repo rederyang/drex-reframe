@@ -20,6 +20,7 @@ sys.path.insert(0, str(ROOT))
 from reframe.pipeline import _hms  # noqa: E402
 sys.path.insert(0, str(ROOT / "scripts"))
 import overview_svg  # noqa: E402
+import scene_svg  # noqa: E402
 
 # Ground truth for the El Clásico window, from the broadcast commentary (transcript) + match record.
 KNOWN = [
@@ -153,12 +154,33 @@ def main():
         "t_s0": round(s0["timing_s"]["cuts"] + s0["timing_s"]["audio+asr"]),
         "t_s1": round(timing.get("s1", 0)), "t_s3": round(timing.get("s3", 0)),
     }
+    # ---- baseline comparison on aligned clips
+    cmp = None
+    cf = ROOT / "runs" / "compare" / "compare.json"
+    if cf.exists():
+        cmp = json.loads(cf.read_text())
+        gem_run = ROOT / "runs" / "gemini_aligned_clasico"
+        for c in cmp["clips"]:
+            ei = c["event_index"]
+            for src, dst in ((ROOT / "runs" / "compare" / f"center_{ei:02d}.mp4", f"c_center_{ei:02d}.mp4"),
+                             (gem_run / f"event_{ei:02d}_vertical.mp4", f"c_gem_{ei:02d}.mp4")):
+                if not (out / "media" / dst).exists():
+                    sh("ffmpeg", "-y", "-loglevel", "error", "-i", str(src), "-vf", "scale=360:640", "-c:v", "libx264",
+                       "-crf", "28", "-preset", "veryfast", "-an", "-movflags", "+faststart", str(out / "media" / dst))
+            c["center_v"], c["gemini_v"], c["drex_v"] = f"c_center_{ei:02d}.mp4", f"c_gem_{ei:02d}.mp4", f"v{ei:02d}.mp4"
+            for v in (c["center_v"], c["gemini_v"], c["drex_v"]):
+                sh("ffmpeg", "-y", "-loglevel", "error", "-ss", "8", "-i", str(out / "media" / v), "-frames:v", "1",
+                   "-q:v", "6", str(out / "media" / v.replace(".mp4", ".jpg")))
+            ev = events[ei]
+            c["label"] = verdict(ev)[1].replace("命中：", "")
     tpl = (ROOT / "scripts" / "report_template.html").read_text()
     page = (tpl.replace("__DATA__", json.dumps(data, ensure_ascii=False))
                .replace("__STATS__", json.dumps(stats, ensure_ascii=False))
                .replace("__COST__", json.dumps(cost_rows, ensure_ascii=False))
-               .replace("__BASELINE__", "true" if has_base else "false")
-               .replace("__OVERVIEW__", overview_svg.build()))
+               .replace("__COMPARE__", json.dumps(cmp, ensure_ascii=False) if cmp else "null")
+               .replace("__OVERVIEW__", overview_svg.build())
+               .replace("__SCENE_LAND__", scene_svg.build()[0])
+               .replace("__SCENE_PHONE__", scene_svg.build()[1]))
     (out / "index.html").write_text(page)
     files = sorted(p.name for p in (out / "media").iterdir())
     (out / "files.json").write_text(json.dumps({f"media/{f}": str(out / "media" / f) for f in files}, indent=1))

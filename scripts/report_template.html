@@ -90,7 +90,7 @@ blockquote{margin:0;padding-left:12px;border-left:2px solid var(--line);color:va
 .tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
 table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
 th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
-th{font-weight:600;font-size:12px;color:var(--muted);letter-spacing:.04em}
+th{font-weight:600;font-size:12px;color:var(--muted);letter-spacing:.02em;white-space:nowrap;line-height:1.4;vertical-align:bottom}
 td.n,th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
 tr:last-child td{border-bottom:0}
 ul.notes{margin:0;padding-left:20px;display:grid;gap:8px;max-width:76ch}
@@ -144,6 +144,53 @@ ol.steps{margin:0;padding-left:22px;display:grid;gap:10px;max-width:78ch}
 .ideas span{font-size:13.5px;color:var(--muted)}
 @media (max-width:860px){.ideas{grid-template-columns:repeat(2,minmax(0,1fr))}.ideas>div:nth-child(3){padding-left:0;border-left:0}}
 @media (max-width:480px){.ideas{grid-template-columns:minmax(0,1fr)}.ideas>div{padding-left:0!important;border-left:0!important;border-top:1px solid var(--line)}}
+
+/* scene: landscape broadcast -> vertical phone (animated) */
+.scene{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:32px;align-items:center}
+@media (max-width:860px){.scene{grid-template-columns:minmax(0,1fr)}}
+.scene-viz{display:flex;align-items:center;gap:18px;min-width:0}
+.scene-viz figure{margin:0;display:grid;gap:6px;justify-items:center;min-width:0}
+.scene-viz figcaption{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;color:var(--muted)}
+.sc-land{width:100%;max-width:420px;height:auto;display:block;border-radius:6px}
+.phone{width:112px;flex:none;padding:7px;border-radius:20px;background:var(--ink)}
+.sc-phone{display:block;width:100%;height:auto;border-radius:14px}
+.scene-arrow{flex:none;color:var(--muted);font-size:22px}
+.scene-copy{display:grid;gap:14px;min-width:0}
+.scene-copy p{font-size:15.5px}
+.needs{margin:0;padding:0;list-style:none;display:grid;gap:10px;counter-reset:n}
+.needs li{display:grid;grid-template-columns:28px minmax(0,1fr);gap:10px;align-items:start;counter-increment:n}
+.needs li::before{content:counter(n);font-family:var(--f-display);font-weight:700;font-size:18px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--ink);color:var(--bg)}
+.needs b{font-weight:600}
+.sc-grass{fill:#2f7d4f}.sc-stripe{fill:#2a7148}
+.sc-line{fill:none;stroke:#e9f2ec;stroke-opacity:.7;stroke-width:1.2}
+.sc-goal{fill:#e9f2ec}
+.sc-p{stroke:#0d1a14;stroke-width:.8}.sc-a{fill:#f4f4f4}.sc-b{fill:#3b5bd6}.sc-k{fill:#9be15d}
+.sc-ball{fill:#ffd23f;stroke:#0d1a14;stroke-width:.8}
+.sc-hud{font-family:var(--f-mono);font-size:7px;fill:#e9f2ec}
+.sc-crop{fill:none;stroke:#38c4e6;stroke-width:2.6}
+.sc-cropglow{fill:#38c4e6;fill-opacity:.10}
+.sc-goaltext{font-family:var(--f-display);font-weight:700;font-size:24px;fill:#ffd23f;stroke:#0d1a14;stroke-width:.8;opacity:0}
+.sc-ballmove{animation:sc-ball 7s ease-in-out infinite}
+.sc-cropmove{animation:sc-crop 7s ease-in-out infinite}
+.sc-pan{animation:sc-pan 7s ease-in-out infinite}
+.sc-goaltext{animation:sc-goal 7s linear infinite}
+@keyframes sc-ball{0%{transform:translate(60px,96px)}25%{transform:translate(140px,78px)}50%{transform:translate(205px,112px)}72%{transform:translate(262px,92px)}82%,100%{transform:translate(313px,90px)}}
+@keyframes sc-crop{0%{transform:translate(9.4px,0)}25%{transform:translate(89.4px,0)}50%{transform:translate(154.4px,0)}72%{transform:translate(211.4px,0)}82%,100%{transform:translate(218.75px,0)}}
+@keyframes sc-pan{0%{transform:translate(-9.4px,0)}25%{transform:translate(-89.4px,0)}50%{transform:translate(-154.4px,0)}72%{transform:translate(-211.4px,0)}82%,100%{transform:translate(-218.75px,0)}}
+@keyframes sc-goal{0%,81%{opacity:0}84%,96%{opacity:1}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){
+  .sc-ballmove,.sc-cropmove,.sc-pan,.sc-goaltext{animation:none}
+  .sc-ballmove{transform:translate(205px,112px)}.sc-cropmove{transform:translate(154.4px,0)}.sc-pan{transform:translate(-154.4px,0)}}
+
+h3{font-size:22px;margin-top:8px}
+.trio{display:grid;grid-template-columns:repeat(3,minmax(0,220px));gap:20px}
+.trio figure{margin:0;display:grid;gap:8px}
+.trio figcaption{display:grid;gap:2px;font-size:13px}
+.trio figcaption b{font-size:14px}
+.trio figcaption span{color:var(--muted)}
+@media (max-width:640px){.trio{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.trio figcaption span{display:none}}
+td.best{font-weight:700;color:var(--pitch)}
+tr.ours td:first-child{font-weight:600}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 </style>
 
@@ -151,6 +198,24 @@ ol.steps{margin:0;padding-left:22px;display:grid;gap:10px;max-width:78ch}
   <header class="head">
     <div class="eyebrow">Nace AI Hackathon · 皇马 2–3 巴萨（2017）· 视频时间 <span id="win"></span></div>
     <h1>Drex 竖屏重构</h1>
+    <div class="scene">
+      <div class="scene-viz">
+        <figure>__SCENE_LAND__<figcaption>横屏转播 16:9</figcaption></figure>
+        <span class="scene-arrow" aria-hidden="true">→</span>
+        <figure><div class="phone">__SCENE_PHONE__</div><figcaption>竖屏 9:16</figcaption></figure>
+      </div>
+      <div class="scene-copy">
+        <div class="eyebrow">场景</div>
+        <p>体育内容团队手里有大量整场横屏比赛回放，观众却主要在抖音、TikTok、Reels 上竖着刷。今天把一场 90 分钟的比赛剪成竖屏高光，要靠剪辑师逐段挑时刻、逐帧拖取景框。</p>
+        <p class="muted">难点：竖屏只能留下横屏宽度的约三分之一。留哪一块取决于此刻发生了什么：进攻时跟球，射门时看球门，进球后看庆祝的人。</p>
+        <ul class="needs">
+          <li><span><b>找时刻：</b>从整场比赛里自动挑出进球、红牌、绝杀。</span></li>
+          <li><span><b>选画面：</b>每一帧决定竖屏该保留哪一块。</span></li>
+          <li><span><b>运镜稳：</b>同一镜头里不乱跳，球不出框。</span></li>
+        </ul>
+      </div>
+    </div>
+    <div class="eyebrow" style="margin-top:12px">方案</div>
     <p>把一整场横屏足球转播，自动剪成适合手机竖屏的高光短视频：找出进球、红牌这些值得看的时刻，每一帧都决定该保留画面的哪一块，并让镜头像真人摄像师一样平稳地跟着球走。</p>
     <figure class="overview">
       <div class="scroll">__OVERVIEW__</div>
@@ -217,11 +282,19 @@ ol.steps{margin:0;padding-left:22px;display:grid;gap:10px;max-width:78ch}
     <div class="clips" id="clips"></div>
   </section>
 
-  <section id="baseSec" hidden>
-    <div class="eyebrow">对照</div>
-    <h2>J 罗扳平：中心裁切 vs Drex</h2>
-    <p class="muted">同一段 22 秒。中心裁切永远看画面正中间；Drex 版本跟随进攻方向移动。</p>
-    <div class="pair" id="pair"></div>
+  <section id="cmpSec" hidden>
+    <div class="eyebrow">方案对比</div>
+    <h2>和其他方案比：质量、成本、延迟</h2>
+    <p class="muted">Gemini 原生视频基线最初自己挑时间段，3 段里有 2 段的时间戳偏了约 9 分钟，直接比裁切会拿不同的画面互相比较。所以分成两部分：先比“找时刻”，再在<b>同一批 4 个片段</b>上比“选画面”，三种方案共用同一套平滑和渲染代码。</p>
+    <h3>找时刻：整场 30 分钟里能不能准时找到 4 个关键事件</h3>
+    <div class="tablewrap"><table id="cmpFind"></table></div>
+    <div id="gemMiss" class="muted" style="font-size:13px"></div>
+    <h3>选画面：同样 4 个片段，谁的镜头跟得住球</h3>
+    <div class="tablewrap"><table id="cmpCrop"></table></div>
+    <p class="muted" style="font-size:13px">没有人工真值，所以“球在框内”用两个模型各自判断的球位分别算一遍。只在自己的参照下好看，说明可能只是自洽；两种参照下都高才更可信。费用只算模型调用：Drex Max v1.1 按每个输入 token 30 nUSD（每百万 $0.03）计费，输出不计费；Gemini 按公开牌价估算（输入每百万 $1.5，输出和思考每百万 $7.5）。本地转写、切镜头和渲染的算力不在内。Drex 输入 token 多 36 倍，但单价低 50 倍，所以每个片段仍便宜约 20 倍。</p>
+    <h3>同片段对照</h3>
+    <div class="chips" id="cmpChips" role="group" aria-label="选择片段"></div>
+    <div class="trio" id="trio"></div>
   </section>
 
   <section>
@@ -241,7 +314,7 @@ ol.steps{margin:0;padding-left:22px;display:grid;gap:10px;max-width:78ch}
     <div class="eyebrow">成本与延迟</div>
     <h2>调用账单</h2>
     <div class="tablewrap"><table id="cost"></table></div>
-    <p class="muted" style="font-size:13px">Max v1.1 按输入 token 计费，输出 token 不计费；价格页未显示单价，这里只列 token。图片 token 已包含在输入 token 内。</p>
+    <p class="muted" style="font-size:13px">Drex Max v1.1 每个输入 token 30 nUSD（每百万 $0.03），输出 token 不计费，图片 token 计入输入 token。来源：Nace 控制台定价文档的计费示例。</p>
   </section>
 
   <section>
@@ -258,7 +331,7 @@ ol.steps{margin:0;padding-left:22px;display:grid;gap:10px;max-width:78ch}
 </div>
 
 <script>
-const D = __DATA__, S = __STATS__, COST = __COST__, HAS_BASE = __BASELINE__;
+const D = __DATA__, S = __STATS__, COST = __COST__;
 const $ = s => document.querySelector(s);
 const SHOT_ZH = {wide: "远景", medium: "中景", closeup: "特写", crowd: "观众", graphic: "图形"};
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -271,7 +344,7 @@ $("#score").innerHTML = [
   [`${S.found}/4`, "已知关键事件被剪出"],
   [`${S.cands}→${S.kept}`, "候选 → 保留片段"],
   [fmt(S.pipe_calls), "Drex 调用次数（s1 + s3）"],
-  [`${(S.pipe_in/1000).toFixed(0)}k`, "输入 token（s1 + s3）"],
+  [`$${(S.pipe_in * 0.03 / 1e6).toFixed(3)}`, `Drex 费用（s1 + s3，${(S.pipe_in/1000).toFixed(0)}k token）`],
 ].map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("");
 
 // timeline
@@ -345,14 +418,38 @@ function chart(c) {
     <span><i class="sw" style="border-left:2px dashed var(--muted);width:2px;height:12px"></i>镜头切换</span></div>`;
 }
 
-if (HAS_BASE) {
-  const eq = D.clips.find(c => Math.abs(parse(c.peak) - 5653) < 20);
-  if (eq) {
-    $("#baseSec").hidden = false;
-    $("#pair").innerHTML = `
-      <figure><video class="vert" src="media/baseline.mp4" controls playsinline muted preload="none"></video><figcaption>中心裁切（基线）</figcaption></figure>
-      <figure><video class="vert" src="media/${eq.v}" poster="media/${eq.p}" controls playsinline muted preload="none"></video><figcaption>Drex 栅格决策 + 平滑</figcaption></figure>`;
-  }
+const CMP = __COMPARE__;
+if (CMP) {
+  $("#cmpSec").hidden = false;
+  const pct = v => v == null ? "–" : Math.round(v * 100) + "%";
+  const usd = v => v == null ? "–" : "$" + (v < 0.01 ? v.toFixed(4) : v.toFixed(3));
+  const D1 = CMP.discovery;
+  $("#cmpFind").innerHTML = `<thead><tr><th>方案</th><th class="n">准时找到</th><th class="n">模型调用</th><th class="n">耗时</th><th class="n">输入 token</th><th class="n">模型费用</th></tr></thead><tbody>
+    <tr><td>Gemini 原生视频：一次看完 30 分钟，直接给时间段</td><td class="n">${D1.gemini.on_time} / 4</td><td class="n">${D1.gemini.calls}</td><td class="n best">${D1.gemini.latency_s.toFixed(0)}s</td><td class="n">${fmt(D1.gemini.tokens)}</td><td class="n">${usd(D1.gemini.usd)}</td></tr>
+    <tr class="ours"><td>Drex：解说 + 欢呼声召回，Drex 逐个确认</td><td class="n best">${D1.drex.found_on_time} / 4</td><td class="n">${D1.drex.calls}</td><td class="n">${D1.drex.latency_s.toFixed(0)}s<br><span class="muted" style="font-size:12px">${esc(D1.drex.latency_note)}</span></td><td class="n">${fmt(D1.drex.tokens)}</td><td class="n best">${usd(D1.drex.usd)}</td></tr></tbody>`;
+  $("#gemMiss").innerHTML = "Gemini 选出的 3 段：" + D1.gemini.events.map(e => {
+    const ok = Math.abs(e.err_s) <= 15;
+    return `${ok ? "✓" : "✗"} ${esc(e.nearest_known)}（时间戳${ok ? "准确" : "偏差 " + Math.round(Math.abs(e.err_s) / 60 * 10) / 10 + " 分钟，裁到了别的画面"}）`;
+  }).join("；") + "。Gemini 的文字描述都对，连比分牌时钟都写对了，错的是视频时间戳。基线配置为最多选 3 段，所以没有选红牌。";
+  const S2 = CMP.summary, M = [["center", "中心裁切（无模型）"], ["gemini", "Gemini 导演：看整段视频，输出区域和焦点"], ["drex", "Drex 栅格：每 0.5 秒选编号线"]];
+  const best = (k, hi) => { const v = M.map(([m]) => S2[m][k]).filter(x => x != null); return hi ? Math.max(...v) : Math.min(...v); };
+  const cell = (m, k, f, hi) => { const v = S2[m][k]; return `<td class="n${v != null && v === best(k, hi) ? " best" : ""}">${f(v)}</td>`; };
+  $("#cmpCrop").innerHTML = `<thead><tr><th>方案</th><th class="n">球在框内<br>Drex 球位</th><th class="n">球在框内<br>Gemini 球位</th><th class="n">摆动<br>次/分钟</th><th class="n">决策耗时<br>每片段</th><th class="n">输入 token<br>每片段</th><th class="n">模型费用<br>每片段</th></tr></thead><tbody>` +
+    M.map(([m, n]) => `<tr class="${m === "drex" ? "ours" : ""}"><td>${n}</td>` +
+      cell(m, "ball_in_ref_drex", pct, true) + cell(m, "ball_in_ref_gemini", pct, true) +
+      `<td class="n">${S2[m].swings_per_min.toFixed(1)}</td>` +
+      (m === "center" ? `<td class="n">0</td><td class="n">0</td><td class="n">$0</td>` :
+       `<td class="n">${S2[m].latency_s_per_clip.toFixed(0)}s</td><td class="n">${fmt(Math.round(S2[m].tokens_per_clip))}</td>` +
+       `<td class="n${m === "drex" ? " best" : ""}">${usd(S2[m].usd_per_clip)}</td>`) + `</tr>`).join("") + `</tbody>`;
+  let ci = 0;
+  const renderTrio = () => {
+    $("#cmpChips").innerHTML = CMP.clips.map((c, i) => `<button type="button" id="cmp-${i}" data-i="${i}" aria-pressed="${i === ci}">${esc(c.label)}</button>`).join("");
+    const c = CMP.clips[ci];
+    $("#trio").innerHTML = [["center", "中心裁切", c.center_v], ["gemini", "Gemini 导演", c.gemini_v], ["drex", "Drex 栅格", c.drex_v]].map(([m, n, v]) =>
+      `<figure><video class="vert" src="media/${v}" poster="media/${v.replace(".mp4", ".jpg")}" controls playsinline muted preload="none"></video><figcaption><b>${n}</b><span>球在框内 ${pct(c[m].ball_in_ref_drex)} / ${pct(c[m].ball_in_ref_gemini)}</span></figcaption></figure>`).join("");
+  };
+  $("#cmpChips").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; ci = +b.dataset.i; renderTrio(); });
+  renderTrio();
 }
 
 // gallery
@@ -376,6 +473,6 @@ $("#chips").addEventListener("click", e => {
 renderGallery();
 
 // cost
-$("#cost").innerHTML = `<thead><tr><th>环节</th><th class="n">调用</th><th class="n">输入 token</th><th class="n">其中图片</th><th class="n">延迟 p50</th></tr></thead><tbody>` +
-  COST.map(r => `<tr><td>${esc(r[0])}</td><td class="n">${fmt(r[1])}</td><td class="n">${fmt(r[2])}</td><td class="n">${fmt(r[3])}</td><td class="n">${r[4].toFixed(2)}s</td></tr>`).join("") + `</tbody>`;
+$("#cost").innerHTML = `<thead><tr><th>环节</th><th class="n">调用</th><th class="n">输入 token</th><th class="n">其中图片</th><th class="n">延迟 p50</th><th class="n">费用</th></tr></thead><tbody>` +
+  COST.map(r => `<tr><td>${esc(r[0])}</td><td class="n">${fmt(r[1])}</td><td class="n">${fmt(r[2])}</td><td class="n">${fmt(r[3])}</td><td class="n">${r[4].toFixed(2)}s</td><td class="n">$${(r[2] * 0.03 / 1e6).toFixed(4)}</td></tr>`).join("") + `</tbody>`;
 </script>
