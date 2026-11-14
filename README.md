@@ -2,24 +2,21 @@
 
 Turns a full landscape football match into vertical (9:16) highlight clips. Drex Max decides what each frame should show, and plain code turns those decisions into a smooth camera path.
 
-## Portable Scene1 demo
+## Demo
 
-This branch includes everything needed to demonstrate the main pipeline: **six four-second input clips**, four real recorded runs, exact model-input JPEGs, responses, probabilities, crop previews and rendered videos. The full match, API keys and machine-specific paths are not included. Git LFS is not required.
+Includes six short Scene1 clips and four recorded runs. The original match video is not required.
 
-```bash
-git clone --branch demo/portable-scene1 --single-branch https://github.com/rederyang/drex-reframe.git
-cd drex-reframe
-```
+### Offline replay
 
-### Offline replay — Python only, no key or network
+Requires Python 3 only; no API key or network access.
 
 ```bash
 python3 scripts/serve_replay.py
 ```
 
-Open **http://127.0.0.1:8504/replay/**. Choose a clip and recorded focus, inspect the request/response and probabilities, or replay the source and vertical video together. This mode clearly displays `REPLAY` and sends no model requests. It needs only Python 3's standard library, with no pip packages or FFmpeg installation.
+Open the [offline demo](http://127.0.0.1:8504/replay/) to explore recorded requests, responses and vertical videos.
 
-### Live demo — custom goals and real NACE calls
+### Live inference
 
 ```bash
 conda env create -f demo/environment.yml
@@ -29,25 +26,7 @@ cp .env.example .env
 streamlit run demo/app.py --server.address 127.0.0.1 --server.port 8503 --server.runOnSave false
 ```
 
-Open **http://127.0.0.1:8503**. The Conda environment includes Python 3.12 and FFmpeg. If using an existing Python environment instead, install `demo/requirements.txt` and make `ffmpeg` / `ffprobe` available on PATH.
-
-The English interface offers six fixed clips, preset goals and free text. Eight frames are sampled at 0.5-second intervals. One NACE request asks seven Choice questions per frame: shot type, four region edges and focus x/y. It directly calls `prepare_keyframe_batch()` / `detect_keyframe_batch()`, the existing probability decoder, `plan_clip()` and `render()` to produce a 720 × 1280 video with audio. The no-goal request matches the main implementation at `ab86fd8`; custom goals add context to state without replacing the workflow's logic. Switching frames or views never queries NACE. Changing the clip or goal invalidates the current result.
-
-The live app reads **only this clone's** `.env` or `NACE_API_KEY` environment variable. Each new run is saved under ignored `runs/region_demo/<id>/`; no credentials are saved. All media defaults to `demo/assets/`. Processing times are local to each four-second clip; the UI retains its original Scene1 timestamp through the asset manifest.
-
-### Bundled files and verification
-
-| Path | Contents |
-|---|---|
-| `demo/assets/manifest.json` | Clip metadata, original offsets, cut points and SHA-256 checksums |
-| `demo/assets/scene1/` | Six four-second MP4 clips, each under 2 MB |
-| `demo/assets/recordings/` | Four real runs: model images, previews, vertical and comparison videos |
-| `demo/replay/` | Standalone replay interface and sanitized recorded request/response JSON |
-| `demo/environment.yml` | Live-demo environment including FFmpeg |
-
-Run `python -m unittest discover -s tests -v` in the live environment to verify assets, decoding, rendering and UI behavior. The parity check against the original main stage is skipped only when its baseline commit is absent from a source export or shallow clone.
-
-Maintainers can regenerate input clips with `python scripts/package_demo_assets.py --source-scene /path/to/original/scene1`. This command needs the original video **only for regeneration**, not for running either demo.
+Open the [live demo](http://127.0.0.1:8503/) to run NACE with preset or custom viewing goals. The environment includes FFmpeg.
 
 ## Pipeline (`reframe/pipeline.py`)
 
