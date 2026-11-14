@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Drex Vertical Reframe - Key Region Detection</title>
+  <meta name="description" content="Explore real NACE region detection, model responses and vertical videos from the main Drex workflow.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<main>
+  <h1>Drex Vertical Reframe - Key Region Detection</h1>
+  <div class="controls">
+    <label>Clip<select id="clip" aria-label="Clip"></select></label>
+    <label>Focus<select id="focus" aria-label="Focus"></select></label>
+    <button class="primary" id="replay">Replay video <span aria-hidden="true">↗</span></button>
+  </div>
+  <p class="goal" id="goal">Loading recorded runs…</p>
+  <div class="toolbar">
+    <nav aria-label="Pipeline stage" id="stages">
+      <button data-stage="source">Source</button><button data-stage="request">Request</button><button data-stage="response">Response</button><button data-stage="crop" class="active">Crop</button><button data-stage="video">Video</button>
+    </nav>
+    <span id="metrics"></span>
+  </div>
+  <div class="visuals" id="visuals">
+    <section class="source"><h2 id="source-label">Source</h2><canvas id="canvas" width="1280" height="720" aria-label="Source frame with detected region and final crop"></canvas><video id="source-video" controls playsinline preload="metadata" hidden></video></section>
+    <section class="portrait"><h2>9:16 output</h2><img id="portrait" alt="Recorded vertical crop" width="360" height="640"><video id="portrait-video" muted controls playsinline preload="metadata" hidden></video></section>
+  </div>
+  <div class="under"><div class="legend" id="legend"><span><i></i>Region + focus</span><span><i class="cyan"></i>Final crop</span></div><a id="download-video" download="scene1-vertical.mp4">Download video ↓</a></div>
+  <div class="frames" id="frames" role="group" aria-label="Choose frame"></div>
+  <section class="response-panel" id="response-panel" hidden>
+    <div class="response-head"><label>Question<select id="question" aria-label="Question"><option value="left">Left</option><option value="right">Right</option><option value="top">Top</option><option value="bottom">Bottom</option><option value="focus_x">Focus X</option><option value="focus_y">Focus Y</option><option value="shot">Shot type</option></select></label><span id="answer"></span></div>
+    <div class="chart" id="chart" aria-label="Recorded probability distribution"></div>
+  </section>
+  <details id="inspector"><summary>Inspect pipeline</summary>
+    <div class="inspector-tabs" role="group" aria-label="Inspector"><button data-inspect="request" class="active">Request</button><button data-inspect="response">Response</button><button data-inspect="decoded">Region</button><button data-inspect="plan">Camera path</button></div>
+    <p id="inspector-label"></p><pre id="json"></pre><div class="provenance"><span id="provenance"></span><a id="download-json" download>Download run JSON ↓</a></div>
+  </details>
+  <footer>Recorded main-pipeline runs. No live model requests are sent.</footer>
+  <div id="error" role="alert" hidden></div>
+</main>
+<script src="app.js" type="module"></script>
+</body>
+</html>

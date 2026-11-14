@@ -1,0 +1,13 @@
+name: drex-reframe-demo
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - ffmpeg
+  - pip
+  - pip:
+      - streamlit>=1.49,<2
+      - numpy
+      - Pillow>=11,<13
+      - requests>=2.32,<3
+      - python-dotenv>=1,<2

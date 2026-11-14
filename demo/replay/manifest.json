@@ -1,0 +1,58 @@
+{
+  "mode": "replay",
+  "pipeline": "main",
+  "clips": [
+    {
+      "id": "wing",
+      "label": "Wing play · 00:12",
+      "start": 12.0,
+      "video": "../assets/scene1/wing.mp4"
+    },
+    {
+      "id": "wide",
+      "label": "Wide play · 00:32",
+      "start": 32.0,
+      "video": "../assets/scene1/wide.mp4"
+    },
+    {
+      "id": "goal",
+      "label": "Goal area · 02:00",
+      "start": 120.0,
+      "video": "../assets/scene1/goal.mp4"
+    }
+  ],
+  "cases": [
+    {
+      "id": "wing-context",
+      "clip_id": "wing",
+      "focus": "Match context",
+      "goal": "",
+      "record": "records/wing-context.json",
+      "latency_s": 2.0957190990448
+    },
+    {
+      "id": "wing-ball",
+      "clip_id": "wing",
+      "focus": "Ball & players",
+      "goal": "Keep the ball, its carrier and the nearest involved defenders in view.",
+      "record": "records/wing-ball.json",
+      "latency_s": 1.8717529773712158
+    },
+    {
+      "id": "wide-ball",
+      "clip_id": "wide",
+      "focus": "Ball & players",
+      "goal": "Keep the ball, its carrier and the nearest involved defenders in view.",
+      "record": "records/wide-ball.json",
+      "latency_s": 1.5607621669769287
+    },
+    {
+      "id": "goal-area",
+      "clip_id": "goal",
+      "focus": "Goal area",
+      "goal": "Prioritize visible goalmouth action, including the ball and goalkeeper. If the goal is offscreen, follow the visible play.",
+      "record": "records/goal-area.json",
+      "latency_s": 2.007107973098755
+    }
+  ]
+}
