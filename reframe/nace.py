@@ -83,7 +83,12 @@ def drex(state: str, questions: dict, images: list | None = None,
         checkpoint = r.status_code == 403 and "Security Checkpoint" in r.text
         if r.status_code in (429, 500, 502, 503, 529) or checkpoint:
             last = r
-            time.sleep(min(60, 3 * 2 ** attempt))
+            ra = r.headers.get("retry-after")
+            try:
+                ra = float(ra) if ra else 0.0
+            except ValueError:
+                ra = 0.0
+            time.sleep(max(ra, 30.0 if checkpoint else 0.0, min(60, 3 * 2 ** attempt)))
             continue
         if r.status_code >= 400:
             raise RuntimeError(f"Drex {r.status_code}: {r.text[:800]}")

@@ -1,0 +1,381 @@
+<title>Drex 竖屏重构</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: broadcast rundown — a scoreline-style header, then a timeline of the 30-min window,
+   then one row per highlight (vertical output beside the debug view), then the grid study. */
+:root{
+  --bg:#f3f5f4; --surface:#ffffff; --ink:#14201b; --muted:#5b6b64; --line:#d9e0dc;
+  --pitch:#1f6b47; --region:#b88a00; --crop:#0a8fb0; --focus:#d6453d;
+  --hit:#1f6b47; --dup:#9a6a00; --extra:#6b7280;
+  --hit-bg:#e3f1e9; --dup-bg:#f7eed6; --extra-bg:#eceef0;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Inter",-apple-system,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f1513; --surface:#17201c; --ink:#e6ece9; --muted:#9aaba3; --line:#2a3631;
+  --pitch:#5cc28f; --region:#f0c419; --crop:#38c4e6; --focus:#ff6b61;
+  --hit:#5cc28f; --dup:#f0c419; --extra:#a3aab4;
+  --hit-bg:#173527; --dup-bg:#3a3010; --extra-bg:#262c31; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1513; --surface:#17201c; --ink:#e6ece9; --muted:#9aaba3; --line:#2a3631;
+  --pitch:#5cc28f; --region:#f0c419; --crop:#38c4e6; --focus:#ff6b61;
+  --hit:#5cc28f; --dup:#f0c419; --extra:#a3aab4;
+  --hit-bg:#173527; --dup-bg:#3a3010; --extra-bg:#262c31; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px 64px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:grid;gap:56px}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:clamp(40px,7vw,64px)}
+h2{font-size:32px}
+h3{font-size:22px}
+p{margin:0;max-width:68ch}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+section{display:grid;gap:20px}
+.head{display:grid;gap:16px}
+.score{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:3px solid var(--ink);border-bottom:1px solid var(--line)}
+.score>div{padding:14px 16px 16px;display:grid;gap:2px;border-right:1px solid var(--line);min-width:0}
+.score>div:last-child{border-right:0}
+.score b{font-family:var(--f-display);font-size:40px;line-height:1;font-variant-numeric:tabular-nums}
+.score span{font-size:13px;color:var(--muted)}
+@media (max-width:720px){.score{grid-template-columns:repeat(2,minmax(0,1fr))}.score>div:nth-child(2){border-right:0}.score>div:nth-child(-n+2){border-bottom:1px solid var(--line)}}
+/* timeline */
+.tl{position:relative;height:74px;background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.tl .axis{position:absolute;left:0;right:0;bottom:22px;height:2px;background:var(--line)}
+.tl .tick{position:absolute;bottom:4px;font-family:var(--f-mono);font-size:11px;color:var(--muted);transform:translateX(-50%)}
+.tl .known{position:absolute;top:6px;bottom:24px;width:2px;background:var(--pitch)}
+.tl .known i{position:absolute;top:0;left:4px;font-style:normal;font-size:11px;white-space:nowrap;color:var(--pitch);font-weight:600}
+.tl .clip{position:absolute;bottom:18px;height:10px;border-radius:2px;background:var(--crop);opacity:.85}
+.tl .cand{position:absolute;bottom:30px;width:6px;height:6px;border-radius:50%;background:var(--muted);transform:translateX(-50%);opacity:.6}
+.legend{display:flex;flex-wrap:wrap;gap:8px 20px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:10px;border-radius:2px;display:inline-block}
+.sw.ring{background:transparent;border:2px solid currentColor;border-radius:50%;width:12px;height:12px}
+/* clip rows */
+.clips{display:grid;gap:20px}
+.row{display:grid;grid-template-columns:200px minmax(0,1fr);gap:20px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px}
+.row video{width:100%;display:block;border-radius:4px;background:#000}
+.vert{aspect-ratio:9/16;max-width:100%;object-fit:cover}
+.meta{display:grid;gap:12px;align-content:start;min-width:0}
+.meta .top{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 14px}
+.tc{font-family:var(--f-display);font-size:30px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1}
+.pill{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.pill.type{border:1px solid var(--line);color:var(--ink)}
+.pill.hit{background:var(--hit-bg);color:var(--hit)}
+.pill.dup{background:var(--dup-bg);color:var(--dup)}
+.pill.extra{background:var(--extra-bg);color:var(--extra)}
+blockquote{margin:0;padding-left:12px;border-left:2px solid var(--line);color:var(--muted);font-size:14px;max-width:72ch;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;width:120px;display:inline-block;vertical-align:middle}
+.bar i{display:block;height:100%;background:var(--ink)}
+@media (max-width:640px){.row{grid-template-columns:minmax(0,1fr)}.row .vert{max-width:240px}}
+/* baseline */
+.pair{display:flex;flex-wrap:wrap;gap:20px}
+.pair figure{margin:0;display:grid;gap:8px;width:240px;max-width:100%}
+.pair figcaption{font-size:13px;color:var(--muted)}
+/* grid study */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{font:inherit;font-size:13px;padding:6px 14px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.chips button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chips button:focus-visible,.row summary:focus-visible{outline:2px solid var(--crop);outline-offset:2px}
+.gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.gallery figure{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.gallery img{display:block;width:100%;height:auto}
+.gallery figcaption{display:flex;justify-content:space-between;gap:8px;padding:8px 10px;font-size:12px;color:var(--muted)}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:14px;min-width:560px}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line)}
+th{font-weight:600;font-size:12px;color:var(--muted);letter-spacing:.04em}
+td.n,th.n{text-align:right;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+ul.notes{margin:0;padding-left:20px;display:grid;gap:8px;max-width:76ch}
+.stage{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.stage>div{background:var(--surface);padding:12px 14px;display:grid;gap:4px;min-width:0}
+.stage b{font-family:var(--f-mono);font-size:12px;color:var(--pitch)}
+.stage span{font-size:13px}
+@media (max-width:760px){.stage{grid-template-columns:minmax(0,1fr)}}
+.chart{display:grid;gap:6px;min-width:0}
+.chart svg{width:100%;height:auto;display:block}
+.chart .ax{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+ol.steps{margin:0;padding-left:22px;display:grid;gap:10px;max-width:78ch}
+
+/* overview diagram */
+.overview{margin:0;display:grid;gap:10px}
+.overview .scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px}
+.overview svg{display:block;width:100%;min-width:760px;height:auto}
+.overview figcaption{font-size:13px;color:var(--muted)}
+.o-node{fill:var(--surface);stroke:var(--ink);stroke-width:1.5}
+.o-panel{fill:var(--bg);stroke:var(--line)}
+.o-glyph{fill:none;stroke:var(--muted);stroke-width:1.5}
+.o-crop-s{stroke:var(--crop);stroke-width:2}
+.o-t1{font-family:var(--f-body);font-size:15px;font-weight:600;fill:var(--ink)}
+.o-t2{font-family:var(--f-body);font-size:12.5px;fill:var(--muted)}
+.o-t3{font-family:var(--f-body);font-size:13.5px;font-weight:600;fill:var(--ink)}
+.o-h{font-family:var(--f-display);font-size:19px;font-weight:700;fill:var(--ink)}
+.o-lab{font-family:var(--f-body);font-size:13.5px;font-weight:600;fill:var(--ink)}
+.o-drex-t{fill:var(--pitch)}
+.o-arrow{stroke:var(--ink);stroke-width:1.6}
+.o-drex{stroke:var(--pitch);stroke-width:2.6}
+.o-head{fill:var(--ink)} .o-head-d{fill:var(--pitch)}
+.o-conn{fill:none;stroke:var(--muted);stroke-dasharray:3 4}
+.o-pitch{fill:var(--pitch);fill-opacity:.16;stroke:var(--line)}
+.o-gridl{stroke:var(--region);stroke-opacity:.55}
+.o-num{font-family:var(--f-mono);font-size:11px;fill:var(--region)}
+.o-player{fill:var(--muted)}
+.o-region{fill:var(--region);fill-opacity:.12;stroke:var(--region);stroke-width:2.5}
+.o-cropbox{fill:none;stroke:var(--crop);stroke-width:3}
+.o-ball{fill:var(--focus)}
+.o-ring{fill:none;stroke:var(--focus);stroke-width:1.8}
+.o-region-t{fill:var(--region)} .o-ball-t{fill:var(--focus)} .o-crop-t{fill:var(--crop)}
+.o-axis{stroke:var(--line);stroke-width:1.5}
+.o-cut{stroke:var(--muted);stroke-dasharray:4 3}
+.o-kf{fill:var(--region)}
+.o-path{fill:none;stroke:var(--crop);stroke-width:3}
+.o-leader{stroke:var(--focus);stroke-width:1.2}
+.ideas{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:0;border-top:3px solid var(--ink)}
+.ideas>div{padding:14px 16px 4px 0;display:grid;gap:4px;align-content:start;min-width:0}
+.ideas>div+div{padding-left:16px;border-left:1px solid var(--line)}
+.ideas b{font-family:var(--f-display);font-size:20px;line-height:1.2}
+.ideas span{font-size:13.5px;color:var(--muted)}
+@media (max-width:860px){.ideas{grid-template-columns:repeat(2,minmax(0,1fr))}.ideas>div:nth-child(3){padding-left:0;border-left:0}}
+@media (max-width:480px){.ideas{grid-template-columns:minmax(0,1fr)}.ideas>div{padding-left:0!important;border-left:0!important;border-top:1px solid var(--line)}}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <div class="eyebrow">Nace AI Hackathon · 皇马 2–3 巴萨（2017）· 视频时间 <span id="win"></span></div>
+    <h1>Drex 竖屏重构</h1>
+    <p>把一整场横屏足球转播，自动剪成适合手机竖屏的高光短视频：找出进球、红牌这些值得看的时刻，每一帧都决定该保留画面的哪一块，并让镜头像真人摄像师一样平稳地跟着球走。</p>
+    <figure class="overview">
+      <div class="scroll">__OVERVIEW__</div>
+      <figcaption>绿色箭头是调用 Drex 的两步，其余都是本地计算。越往右处理的画面越少，所以贵的模型只花在值得看的片段上。</figcaption>
+    </figure>
+    <div class="ideas">
+      <div><b>定位变成选择题</b><span>Drex 不输出坐标框，就在画面上画编号线，让它选“左边界是几号线、球在几号线”，概率分布顺便给出置信度。</span></div>
+      <div><b>贵的模型只看候选</b><span>先用解说词和欢呼声这类免费信号筛出 20 个候选时刻，30 分钟比赛只调用约 70 次 Drex。</span></div>
+      <div><b>平滑，但不丢球</b><span>同一镜头内平滑运镜，镜头切换处直接硬切；一旦球要出框，就在那一帧把镜头钉回来再重算。</span></div>
+      <div><b>离线可以预判</b><span>回放视频能看到“未来”，镜头在射门前就开始移动，而不是追着球跑。</span></div>
+    </div>
+    <div class="score" id="score"></div>
+  </header>
+
+  <section>
+    <div class="eyebrow">Pipeline</div>
+    <div class="stage">
+      <div><b>s0 结构化</b><span>镜头切分、音量、解说转写</span><span class="muted mono" id="t0"></span></div>
+      <div><b>s1 事件</b><span>关键词 + 欢呼峰值召回，Drex 判断类型与精彩度</span><span class="muted mono" id="t1"></span></div>
+      <div><b>s3 关键帧</b><span>每 0.5 秒一帧，Drex 选栅格线：保留区域 + 焦点</span><span class="muted mono" id="t3"></span></div>
+      <div><b>s4 运镜</b><span>镜头内按 Drex 置信度加权平滑，镜头边界硬切</span><span class="muted mono">本地计算</span></div>
+      <div><b>渲染</b><span>720×1280 竖屏 + 调试对照视频</span><span class="muted mono">ffmpeg</span></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">裁切逻辑</div>
+    <h2>每一帧的裁切框是怎么来的</h2>
+    <ol class="steps">
+      <li><b>Drex 读栅格。</b>每 0.5 秒取一帧，叠上 0–16 号竖线和 A–J 横线，问 Drex 六个问题：要保留区域的左、右、上、下边界线，以及球或人脸所在的竖线和横线。每个回答都带概率分布，分布越集中，这一帧的置信度越高。</li>
+      <li><b>换算成 9:16 框。</b>用能装下保留区域的最小 9:16 框。区域宽到竖屏装不下时（远景很常见），改为以球或人脸为中心。</li>
+      <li><b>镜头内平滑。</b>每个镜头单独求一条平滑的运镜路径：既要贴近每次的 Drex 决策（置信度高的帧更有分量），又不能加速太猛，时间常数 0.8 秒。镜头切换处直接硬切。</li>
+      <li><b>球必须在框内。</b>平滑之后逐帧检查：如果球跑到裁切框中间 80% 以外，就在这一帧钉一个强约束，把框拉回来，再重新求一次路径，最多 3 轮。</li>
+    </ol>
+    <div class="tablewrap"><table>
+      <thead><tr><th>版本</th><th class="n">球在框外</th><th class="n">球贴边</th><th class="n">来回摆动 / 分钟</th></tr></thead>
+      <tbody>
+        <tr><td>第一版：平滑权重失衡，运镜几乎不动</td><td class="n">43%</td><td class="n">11%</td><td class="n">3.1</td></tr>
+        <tr><td>只修权重</td><td class="n">22%</td><td class="n">11%</td><td class="n">8.7</td></tr>
+        <tr><td><b>当前：修权重 + 球必须在框内</b></td><td class="n"><b>1%</b></td><td class="n">6%</td><td class="n">12.6</td></tr>
+      </tbody>
+    </table></div>
+    <p class="muted" style="font-size:13px">这里的“球”是 Drex 自己判断的焦点位置（247 个直播画面关键帧）。如果 Drex 本身把球看错了，这个指标发现不了，需要人工标注来核对。第一版的问题是数据项权重约为 5×10⁻⁵，比平滑项小约 4 万倍，运镜退化成一条慢速直线。</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">时间线</div>
+    <h2>30 分钟里找到了什么</h2>
+    <div class="tl" id="tl"><div class="axis"></div></div>
+    <div class="legend">
+      <span><i class="sw" style="background:var(--pitch)"></i>已知关键事件（按解说文本核对）</span>
+      <span><i class="sw" style="background:var(--muted);border-radius:50%;width:8px;height:8px"></i>召回候选</span>
+      <span><i class="sw" style="background:var(--crop)"></i>最终剪出的片段</span>
+    </div>
+  </section>
+
+  <section>
+    <div class="eyebrow">高光片段</div>
+    <h2>竖屏输出与调试对照</h2>
+    <div class="legend">
+      <span style="color:var(--region)"><i class="sw" style="background:var(--region)"></i>Drex 判断的保留区域</span>
+      <span style="color:var(--crop)"><i class="sw" style="background:var(--crop)"></i>平滑后的 9:16 裁切框</span>
+    </div>
+    <div class="clips" id="clips"></div>
+  </section>
+
+  <section id="baseSec" hidden>
+    <div class="eyebrow">对照</div>
+    <h2>J 罗扳平：中心裁切 vs Drex</h2>
+    <p class="muted">同一段 22 秒。中心裁切永远看画面正中间；Drex 版本跟随进攻方向移动。</p>
+    <div class="pair" id="pair"></div>
+  </section>
+
+  <section>
+    <div class="eyebrow">可行性实验</div>
+    <h2>Drex 能读懂栅格吗</h2>
+    <p class="muted">30 张关键帧，每张 1 次请求，问 6 个 choice：保留区域的左、右、上、下边界线，加上焦点（球或人脸）所在的横线和竖线。</p>
+    <div class="legend">
+      <span style="color:var(--region)"><i class="sw" style="background:var(--region)"></i>保留区域</span>
+      <span style="color:var(--focus)"><i class="sw ring"></i>焦点</span>
+      <span style="color:var(--crop)"><i class="sw" style="background:var(--crop)"></i>9:16 裁切框（右侧为裁切结果）</span>
+    </div>
+    <div class="chips" id="chips" role="group" aria-label="按景别筛选"></div>
+    <div class="gallery" id="gallery"></div>
+  </section>
+
+  <section>
+    <div class="eyebrow">成本与延迟</div>
+    <h2>调用账单</h2>
+    <div class="tablewrap"><table id="cost"></table></div>
+    <p class="muted" style="font-size:13px">Max v1.1 按输入 token 计费，输出 token 不计费；价格页未显示单价，这里只列 token。图片 token 已包含在输入 token 内。</p>
+  </section>
+
+  <section>
+    <div class="eyebrow">已知问题</div>
+    <h2>还没解决的</h2>
+    <ul class="notes">
+      <li><b>Drex 在快速运动的特写上会看错。</b>例如 01:21:25 片段第 16 秒：拉基蒂奇跑动庆祝，Drex 判断的人脸位置比实际偏左约 200px，裁切框跟着偏了。轨迹图里红点的竖线越长，说明 Drex 越不确定。下一步：特写或不确定度高时调用一次轻量人脸检测兜底；远景先粗定位，再放大局部区域细问一次球的位置。</li>
+      <li><b>同一个进球被剪两次。</b>进球后的回放和庆祝也会被判为“进球”。下一步：同类事件 90 秒内去重，或者把回放当作同一事件的延伸。</li>
+      <li><b>远景里有没有真的找到球，还不能下结论。</b>栅格实验没有人工真值，只能看叠加图目测。需要用 <span class="mono">tools/label.html</span> 标注后才能算准确率。</li>
+      <li><b>召回关键词是看着这场比赛调的。</b>换到比利时 vs 日本之前，需要先用那场验证，避免过拟合。</li>
+      <li><b>转写用的是本地 Whisper。</b>NDI 当时被场馆网络的防火墙挡住，网络恢复后可以换回 NDI 再对比。</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+const D = __DATA__, S = __STATS__, COST = __COST__, HAS_BASE = __BASELINE__;
+const $ = s => document.querySelector(s);
+const SHOT_ZH = {wide: "远景", medium: "中景", closeup: "特写", crowd: "观众", graphic: "图形"};
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt = n => Number(n).toLocaleString("en-US");
+$("#win").textContent = S.window;
+$("#t0").textContent = `${S.cuts} 个镜头 · ${S.segs} 段转写 · ${S.t_s0}s`;
+$("#t1").textContent = `${S.cands} 个候选 · ${S.t_s1 || "–"}s`;
+$("#t3").textContent = `${S.kf} 个关键帧 · ${S.t_s3 || "–"}s`;
+$("#score").innerHTML = [
+  [`${S.found}/4`, "已知关键事件被剪出"],
+  [`${S.cands}→${S.kept}`, "候选 → 保留片段"],
+  [fmt(S.pipe_calls), "Drex 调用次数（s1 + s3）"],
+  [`${(S.pipe_in/1000).toFixed(0)}k`, "输入 token（s1 + s3）"],
+].map(([b, s]) => `<div><b>${b}</b><span>${s}</span></div>`).join("");
+
+// timeline
+const parse = h => { const [a,b,c] = h.split(":").map(Number); return a*3600+b*60+c; };
+const [w0, w1] = S.window.split("–").map(parse);
+const pct = t => ((t - w0) / (w1 - w0) * 100).toFixed(2) + "%";
+const KN = [[4885,"73′ 进球"],[5167,"77′ 红牌"],[5653,"85′ 扳平"],[6062,"92′ 绝杀"]];
+let tl = "";
+for (let t = w0; t <= w1; t += 300) tl += `<span class="tick" style="left:${pct(t)}">${new Date(t*1000).toISOString().slice(11,16)}</span>`;
+KN.forEach(([t, n]) => tl += `<div class="known" style="left:${pct(t)}"><i>${n}</i></div>`);
+D.cands.forEach(c => tl += `<div class="cand" style="left:${pct(parse(c.t))}" title="${esc(c.t+" "+c.event_zh)}"></div>`);
+D.clips.forEach(c => tl += `<div class="clip" style="left:${pct(c.clip[0])};width:calc(${pct(c.clip[1])} - ${pct(c.clip[0])})"></div>`);
+$("#tl").insertAdjacentHTML("beforeend", tl);
+
+// clips
+$("#clips").innerHTML = D.clips.map(c => `
+  <article class="row">
+    <video class="vert" src="media/${c.v}" poster="media/${c.p}" controls playsinline preload="none"></video>
+    <div class="meta">
+      <div class="top">
+        <span class="tc">${c.peak}</span>
+        <span class="pill type">${esc(c.event_zh)}</span>
+        <span class="pill ${c.kind}">${esc(c.note)}</span>
+      </div>
+      <div class="muted" style="font-size:13px">精彩度 <span class="bar"><i style="width:${(c.excitement/4*100).toFixed(0)}%"></i></span> <span class="mono">${c.excitement.toFixed(2)} / 4</span></div>
+      ${c.commentary ? `<blockquote>“${esc(c.commentary)}”</blockquote>` : ""}
+      <video src="media/${c.d}" controls playsinline muted preload="none" style="max-width:100%"></video>
+      <div class="chart">${chart(c.chart)}</div>
+    </div>
+  </article>`).join("");
+
+function chart(c) {
+  if (!c) return "";
+  const VW = 800, VH = 230, L = 46, R = 10, T = 22, B = 26;
+  const X = t => L + t / c.dur * (VW - L - R);
+  const Y = x => T + (1 - x / c.W) * (VH - T - B);
+  let s = `<svg viewBox="0 0 ${VW} ${VH}" role="img" aria-label="运镜轨迹图：横轴时间，纵轴画面水平位置">`;
+  c.shots.forEach(([a, b, ty], i) => {
+    s += `<rect x="${X(a)}" y="${T}" width="${Math.max(0, X(b) - X(a))}" height="${VH - T - B}" fill="var(--${i % 2 ? "bg" : "surface"})"/>`;
+    s += `<text x="${(X(a) + X(b)) / 2}" y="${T - 7}" text-anchor="middle" class="ax">${SHOT_ZH[ty] || ty}</text>`;
+  });
+  [[0, "左缘"], [c.W / 2, "中"], [c.W, "右缘"]].forEach(([v, n]) => {
+    s += `<line x1="${L}" x2="${VW - R}" y1="${Y(v)}" y2="${Y(v)}" style="stroke:var(--line)"/>`;
+    s += `<text x="${L - 6}" y="${Y(v) + 4}" text-anchor="end" class="ax">${n}</text>`;
+  });
+  for (let t = 0; t <= c.dur; t += 5) s += `<text x="${X(t)}" y="${VH - 8}" text-anchor="middle" class="ax">${t}s</text>`;
+  c.cuts.forEach(t => s += `<line x1="${X(t)}" x2="${X(t)}" y1="${T}" y2="${VH - B}" style="stroke:var(--muted)" stroke-dasharray="4 3"/>`);
+  // crop band, broken at cuts so hard cuts read as jumps
+  const segs = []; let cur = [];
+  c.path.forEach(p => { if (cur.length && c.cuts.some(k => k > cur[cur.length - 1][0] && k <= p[0])) { segs.push(cur); cur = []; } cur.push(p); });
+  if (cur.length) segs.push(cur);
+  segs.forEach(sg => {
+    const top = sg.map(p => `${X(p[0])},${Y(p[1] + p[2])}`).join(" ");
+    const bot = sg.slice().reverse().map(p => `${X(p[0])},${Y(p[1] - p[2])}`).join(" ");
+    s += `<polygon points="${top} ${bot}" style="fill:var(--crop)" fill-opacity=".18" stroke="none"/>`;
+    s += `<polyline points="${sg.map(p => `${X(p[0])},${Y(p[1])}`).join(" ")}" fill="none" style="stroke:var(--crop)" stroke-width="2"/>`;
+  });
+  c.kf.forEach(([t, tg, f, fs, pin, ty]) => {
+    if (ty === "graphic" || ty === "crowd") return;
+    s += `<rect x="${X(t) - 3}" y="${Y(tg) - 3}" width="6" height="6" style="fill:var(--region)"/>`;
+    if (f == null) return;
+    if (fs) s += `<line x1="${X(t)}" x2="${X(t)}" y1="${Y(f + fs)}" y2="${Y(f - fs)}" style="stroke:var(--focus)" stroke-opacity=".35" stroke-width="2"/>`;
+    s += `<circle cx="${X(t)}" cy="${Y(f)}" r="3.5" style="fill:var(--focus)"/>`;
+    if (pin) s += `<circle cx="${X(t)}" cy="${Y(f)}" r="7" fill="none" style="stroke:var(--focus)" stroke-width="1.5"/>`;
+  });
+  return s + `</svg><div class="legend" style="font-size:12px">
+    <span style="color:var(--crop)"><i class="sw" style="background:var(--crop);opacity:.5"></i>最终裁切范围</span>
+    <span style="color:var(--region)"><i class="sw" style="background:var(--region);width:8px;height:8px"></i>Drex 单帧决策中心</span>
+    <span style="color:var(--focus)"><i class="sw" style="background:var(--focus);border-radius:50%;width:8px;height:8px"></i>球 / 人脸（竖线 = 不确定度）</span>
+    <span style="color:var(--focus)"><i class="sw ring"></i>触发“球必须在框内”约束</span>
+    <span><i class="sw" style="border-left:2px dashed var(--muted);width:2px;height:12px"></i>镜头切换</span></div>`;
+}
+
+if (HAS_BASE) {
+  const eq = D.clips.find(c => Math.abs(parse(c.peak) - 5653) < 20);
+  if (eq) {
+    $("#baseSec").hidden = false;
+    $("#pair").innerHTML = `
+      <figure><video class="vert" src="media/baseline.mp4" controls playsinline muted preload="none"></video><figcaption>中心裁切（基线）</figcaption></figure>
+      <figure><video class="vert" src="media/${eq.v}" poster="media/${eq.p}" controls playsinline muted preload="none"></video><figcaption>Drex 栅格决策 + 平滑</figcaption></figure>`;
+  }
+}
+
+// gallery
+const cats = [["all","全部"],["wide","远景"],["closeup","特写"],["replay","回放"]];
+let cur = "all";
+try { cur = localStorage.getItem("cat") || "all"; } catch (e) {}
+function renderGallery() {
+  $("#chips").innerHTML = cats.map(([k, n]) => {
+    const cnt = k === "all" ? D.grid.length : D.grid.filter(g => g.cat === k).length;
+    return `<button type="button" id="chip-${k}" data-k="${k}" aria-pressed="${k===cur}">${n} ${cnt}</button>`;
+  }).join("");
+  $("#gallery").innerHTML = D.grid.filter(g => cur === "all" || g.cat === cur).map(g => `
+    <figure><img src="media/${g.img}" alt="${esc(g.id)} 的 Drex 栅格读数" loading="lazy">
+      <figcaption><span class="mono">${esc(g.id)}</span><span>${g.cat_zh} · ±${g.unc}px${g.wide ? " · 区域宽于竖屏" : ""}</span></figcaption></figure>`).join("");
+}
+$("#chips").addEventListener("click", e => {
+  const b = e.target.closest("button"); if (!b) return;
+  cur = b.dataset.k; try { localStorage.setItem("cat", cur); } catch (err) {}
+  renderGallery();
+});
+renderGallery();
+
+// cost
+$("#cost").innerHTML = `<thead><tr><th>环节</th><th class="n">调用</th><th class="n">输入 token</th><th class="n">其中图片</th><th class="n">延迟 p50</th></tr></thead><tbody>` +
+  COST.map(r => `<tr><td>${esc(r[0])}</td><td class="n">${fmt(r[1])}</td><td class="n">${fmt(r[2])}</td><td class="n">${fmt(r[3])}</td><td class="n">${r[4].toFixed(2)}s</td></tr>`).join("") + `</tbody>`;
+</script>
