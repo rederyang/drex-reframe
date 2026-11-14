@@ -203,6 +203,13 @@ def main():
                .replace("__TALK_PHONE__", scene_svg.build_talk()[1])
                .replace("__TALK__", json.dumps(talk, ensure_ascii=False) if talk else "null")
                .replace("__GEM_MODEL__", gem_model()))
+    # videos: serve from the asset store when an upload map exists (published files did not play for
+    # viewers other than the owner); static literals in the template are rewritten too
+    vm_path = out / "video_assets.json"
+    vmap = json.loads(vm_path.read_text()) if vm_path.exists() else {}
+    page = page.replace("__VIDMAP__", json.dumps(vmap))
+    for name, url in vmap.items():
+        page = page.replace(f'src="media/{name}"', f'src="{url}"')
     (out / "index.html").write_text(page)
     files = sorted(p.name for p in (out / "media").iterdir())
     (out / "files.json").write_text(json.dumps({f"media/{f}": str(out / "media" / f) for f in files}, indent=1))

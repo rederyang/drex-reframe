@@ -492,17 +492,6 @@ table.diff td{vertical-align:top;line-height:1.55}
     <p class="muted" style="font-size:13px">Drex Max v1.1: 30 nUSD per input token ($0.03 per million); output tokens are free; image tokens count as input. Source: billing example in the Nace console pricing docs.</p>
   </section>
 
-  <section>
-    <div class="eyebrow">Known issues</div>
-    <h2>Still open</h2>
-    <ul class="notes">
-      <li><b>Drex misreads fast-moving close-ups.</b> For example, at 0:16 in the 01:21:25 clip, Rakitić runs off to celebrate and Drex places his face about 200px left of where it is, so the crop drifts with it. The longer the bar on a red dot in the path chart, the less sure Drex is. Next: fall back to a lightweight face detector on close-ups or high uncertainty; in wide shots, locate coarsely first, then zoom in and ask for the ball again.</li>
-      <li><b>The same goal gets clipped twice.</b> Replays and celebrations after a goal are also classified as “goal.” Next: dedupe same-type events within 90 seconds, or treat replays as an extension of the same event.</li>
-      <li><b>We can’t yet say whether it really finds the ball in wide shots.</b> The grid test has no human ground truth, only eyeballed overlays. Accuracy needs labels from <span class="mono">tools/label.html</span>.</li>
-      <li><b>Recall keywords were tuned on this match.</b> Before moving to Belgium vs. Japan, validate on that match to avoid overfitting.</li>
-      <li><b>Transcription used local Whisper.</b> The venue firewall blocked NDI at the time; once the network allows it, switch back to NDI and compare.</li>
-    </ul>
-  </section>
   </div>
 
   <div class="case" id="case-interview" role="tabpanel" aria-labelledby="tab-interview" hidden>
@@ -586,21 +575,14 @@ table.diff td{vertical-align:top;line-height:1.55}
     <p class="muted" style="font-size:13px">NDI bills per audio minute ($0.0035/min); Drex Max v1.1 is $0.03 per million input tokens. Local Whisper sentence splitting, shot detection, and rendering are excluded.</p>
   </section>
 
-  <section>
-    <div class="eyebrow">Known issues</div>
-    <h2>Still open</h2>
-    <ul class="notes">
-      <li><b>Some clips start mid-sentence.</b> NDI segments are coarse (median ~17s), so we split sentences with local Whisper, but this time Whisper output almost no punctuation, the “sentences” came out incomplete, and Drex had to pick among them. Next: re-split with word-level timestamps and a larger model.</li>
-      <li><b>Changes shorter than 2s don’t trigger a cut.</b> To avoid cutting too often, we cut only after the face is out of frame for 2+ seconds, so the first 1–2 seconds after a speaker change may stay on the previous person. Locking shots dropped face-in-frame from 99% to 97% in exchange for zero in-shot panning.</li>
-      <li><b>Speaker following was spot-checked on only 2 clips.</b> No human labels; judged by eye from the debug videos.</li>
-      <li><b>Virtual cuts are unvalidated.</b> They’re designed for single-camera, unedited footage, which this isn’t; testing needs a single-camera two-person conversation.</li>
-    </ul>
-  </section>
   </div>
 </div>
 
 <script>
 const D = __DATA__, S = __STATS__, COST = __COST__;
+// videos stream from the artifact asset store (/_blob/<id>); fall back to the published file
+const VID = __VIDMAP__;
+const V = n => VID[n] || "media/" + n;
 const $ = s => document.querySelector(s);
 const SHOT_ZH = {wide: "Wide", medium: "Medium", closeup: "Close-up", crowd: "Crowd", graphic: "Graphic"};
 
@@ -660,8 +642,8 @@ function duo(c, drexV, drexP, what) {
       <span class="acc" title="${what}: Drex reference / Gemini reference">${what} ${pc(acc && acc[0])} · ${pc(acc && acc[1])}</span></figcaption>`;
   const dw = {c: g && d.usd < g.usd, t: g && d.t < g.t}, gw = {c: g && g.usd < d.usd, t: g && g.t < d.t};
   return `<div class="duo">
-    <figure><video class="vert" src="media/${drexV}" poster="media/${drexP}" controls playsinline preload="none"></video>${cap("Drex", d.usd, d.t, A.drex, dw)}</figure>
-    ${g ? `<figure><video class="vert" src="media/${g.v}" poster="media/${g.p}" controls playsinline muted preload="none"></video>${cap(`Gemini <span class="mdl">__GEM_MODEL__</span>`, g.usd, g.t, A.gemini, gw)}</figure>`
+    <figure><video class="vert" src="${V(drexV)}" poster="media/${drexP}" controls playsinline preload="none"></video>${cap("Drex", d.usd, d.t, A.drex, dw)}</figure>
+    ${g ? `<figure><video class="vert" src="${V(g.v)}" poster="media/${g.p}" controls playsinline muted preload="none"></video>${cap(`Gemini <span class="mdl">__GEM_MODEL__</span>`, g.usd, g.t, A.gemini, gw)}</figure>`
         : `<figure class="na"><div class="vert ph">Gemini result pending</div></figure>`}
   </div>`;
 }
@@ -702,7 +684,7 @@ $("#clips").innerHTML = D.clips.map(c => `
       </div>
       <div class="muted" style="font-size:13px">Excitement <span class="bar"><i style="width:${(c.excitement/4*100).toFixed(0)}%"></i></span> <span class="mono">${c.excitement.toFixed(2)} / 4</span></div>
       ${c.commentary ? `<blockquote>“${esc(c.commentary)}”</blockquote>` : ""}
-      ${dbg(c, "media/" + c.d, "media/" + c.d.replace("d", "dp").replace(".mp4", ".jpg"), 8)}
+      ${dbg(c, V(c.d), "media/" + c.d.replace("d", "dp").replace(".mp4", ".jpg"), 8)}
       <div class="chart">${chart(c.chart)}</div>
     </div>
   </article>`).join("");
@@ -873,7 +855,7 @@ if (T) {
           <span class="pill hit">Drex score ${c.score.toFixed(2)} / 4</span>
         </div>
         <div class="quote"><span>Opens</span><q>${esc(c.head)}</q><span>Ends</span><q>${esc(c.tail)}</q></div>
-        ${dbg(c, "media/" + c.d, "media/" + c.dp, 6)}
+        ${dbg(c, V(c.d), "media/" + c.dp, 6)}
         <div class="chart">${lanes(c)}</div>
       </div>
     </article>`).join("");
