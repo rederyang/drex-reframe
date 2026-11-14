@@ -18,14 +18,13 @@ import streamlit as st
 from demo import backend
 from reframe import pipeline
 
-st.set_page_config(page_title="Drex · Region detection", page_icon="◧", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Drex Vertical Reframe - Key Region Detection", page_icon="◧", layout="wide", initial_sidebar_state="collapsed")
 st.html("""<style>
 .stApp{background:#f8f9f7;color:#19241f}
 .block-container{max-width:1250px;padding:2.1rem 2rem 2rem}
 h1{font-size:1.7rem!important;font-weight:600!important;letter-spacing:-.045em;margin-bottom:0!important}
 h2,h3{font-size:.95rem!important;font-weight:550!important;letter-spacing:-.02em}
-[data-testid="stHeader"]{background:transparent;height:2rem}
-[data-testid="stToolbar"]{display:none}
+[data-testid="stHeader"]{display:none}
 [data-testid="stMainBlockContainer"]{padding-top:2rem}
 div[data-testid="stVerticalBlock"]{gap:.75rem}
 button[kind="primary"]{background:#285f45;border:1px solid #285f45;border-radius:7px}
@@ -33,13 +32,10 @@ button[kind="primary"]{background:#285f45;border:1px solid #285f45;border-radius
 [data-testid="stCaptionContainer"]{font-size:12px;color:#7c867e}
 [data-testid="stExpander"]{background:transparent;border-color:#e1e5df;border-radius:7px}
 [data-testid="stExpander"] p{font-size:12px}
-.bar{display:flex;align-items:center;gap:10px;margin:0 0 6px;font-size:10px;letter-spacing:.14em;color:#7a867e;text-transform:uppercase}
-.bar b{font-size:13px;letter-spacing:-.02em;color:#1e3929;text-transform:none}
-.branch{margin-left:auto;border:1px solid #dce4d9;border-radius:5px;padding:2px 7px;font-size:10px;letter-spacing:.03em;color:#527259}
 .empty{aspect-ratio:9/16;width:100%;max-width:240px;background:#edf0ea;border:1px solid #e3e8df;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#a5b09f;font-size:20px;font-weight:300}
 .legend{display:flex;gap:16px;font-size:11px;color:#7a867e;margin-top:4px}.legend i{display:inline-block;width:6px;height:6px;border-radius:2px;background:#e0c500;margin-right:5px}.legend .cyan{background:#00bcd8}
 [role="radio"][aria-checked="true"]{color:#285f45!important;border-color:#99b7a0!important;background:#e8f0e6!important}
-@media(max-width:700px){.block-container{padding:1.4rem 1rem}h1{font-size:1.4rem!important}.bar{font-size:9px}}
+@media(max-width:700px){.block-container{padding:1.4rem 1rem}h1{font-size:1.4rem!important}}
 </style>""")
 
 
@@ -58,8 +54,7 @@ def set_goal():
         st.session_state.goal = value
 
 
-st.html('<div class="bar"><b>drex</b><span>Scene 1 / Football</span><span class="branch">main</span></div>')
-st.title("Region detection")
+st.title("Drex Vertical Reframe - Key Region Detection")
 
 source_col, goal_col, action_col = st.columns([2.1, 2.1, 1], vertical_alignment="bottom")
 with source_col:
