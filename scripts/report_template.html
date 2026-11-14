@@ -885,5 +885,27 @@ renderGallery();
 // cost
 $("#cost").innerHTML = `<thead><tr><th>Step</th><th class="n">Calls</th><th class="n">Input tokens</th><th class="n">Image tokens</th><th class="n">Latency p50</th><th class="n">Cost</th></tr></thead><tbody>` +
   COST.map(r => `<tr><td>${esc(r[0])}</td><td class="n">${fmt(r[1])}</td><td class="n">${fmt(r[2])}</td><td class="n">${fmt(r[3])}</td><td class="n">${r[4].toFixed(2)}s</td><td class="n">$${(r[2] * 0.03 / 1e6).toFixed(4)}</td></tr>`).join("") + `</tbody>`;
+
+// ---- video loader: read each video with fetch() into a blob: URL instead of letting <video> stream it.
+// The viewer frame plays page-fetched blobs reliably; direct streaming of hosted files failed for other viewers.
+(() => {
+  const back = Object.fromEntries(Object.entries(VID).map(([n, u]) => [u, n]));
+  const vids = [...document.querySelectorAll("video[src]")];
+  vids.forEach(v => { v.dataset.src = v.getAttribute("src"); v.removeAttribute("src"); v.load(); });
+  const get = async u => { const r = await fetch(u); if (!r.ok) throw new Error(r.status); const b = await r.blob();
+    return URL.createObjectURL(b.type.startsWith("video/") ? b : new Blob([b], {type: "video/mp4"})); };
+  const load = async v => {
+    if (v.dataset.loaded) return; v.dataset.loaded = "1";
+    const src = v.dataset.src, alt = back[src] ? "media/" + back[src] : null;
+    try { v.src = await get(src); }
+    catch (e) { if (alt) { try { v.src = await get(alt); } catch (e2) { v.src = alt; } } else v.src = src; }
+    if (v.autoplay && !matchMedia("(prefers-reduced-motion: reduce)").matches) v.play().catch(() => {});
+  };
+  if (!("IntersectionObserver" in window)) { vids.forEach(load); return; }
+  const io = new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { io.unobserve(e.target); load(e.target); } }), {rootMargin: "600px"});
+  vids.forEach(v => io.observe(v));
+  // a click on a not-yet-loaded video loads it, then plays
+  document.addEventListener("play", e => { const v = e.target; if (v.tagName === "VIDEO" && !v.dataset.loaded) { load(v).then(() => v.play().catch(() => {})); } }, true);
+})();
 </script>
 
