@@ -1,4 +1,4 @@
-# drex-reframe
+# Drex Vertical Reframe
 
 Turns a full landscape football match into vertical (9:16) highlight clips. Drex Max decides what each frame should show, and plain code turns those decisions into a smooth camera path.
 
