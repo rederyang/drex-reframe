@@ -36,7 +36,10 @@ N_CLIPS = 5
 WIN_MIN_S, WIN_MAX_S = 25.0, 60.0
 MIN_TURN_S = 1.5          # shorter speaker turns ("yeah", "right") never trigger a cut
 MIN_H_FRAC = 0.7          # 720p source: deeper zoom upscales faces too much
-TP = {"tau": 1.6, "dz": 0.10, "vcap": 0.35, "safe": 0.7, "iters": 3}
+TP = {"tau": 1.6, "dz": 0.10, "vcap": 0.35, "safe": 0.7, "iters": 3,
+      # "locked": one fixed framing per segment, changes only by hard cut (default for talk).
+      # "follow": the smoothed follow-cam used for football (kept for A/B in scripts/eval_talk.py).
+      "mode": "locked", "out_frac": 0.25, "min_seg_s": 2.0}
 
 TALK_TARGET = (
     "The 'must-keep region' is the smallest rectangle that has to stay visible when this landscape "
@@ -289,6 +292,9 @@ def plan_clip(s0: dict, clip: dict, kfs: list[dict], run: Path) -> dict:
     all_cuts = sorted(cam_cuts + kept_virtual)
     bounds = [c0] + all_cuts + [c1]
 
+    if TP.get("mode", "locked") == "locked":
+        return _plan_locked(s0, clip, kfs, bounds, cam_cuts, kept_virtual, turns, W, H, fps, n, times, sx)
+
     cx = np.zeros(n); cy = np.zeros(n); hh = np.zeros(n)
     shots, kf_log = [], []
     for s_a, s_b in zip(bounds[:-1], bounds[1:]):
@@ -336,6 +342,88 @@ def plan_clip(s0: dict, clip: dict, kfs: list[dict], run: Path) -> dict:
     return {"clip": clip["clip"], "fps": fps, "W": W, "H": H, "cx": cx.tolist(), "cy": cy.tolist(), "h": hh.tolist(),
             "shots": shots, "cuts": all_cuts, "camera_cuts": cam_cuts, "virtual_cuts": kept_virtual,
             "speaker_turns": turns, "kf": kf_log}
+
+
+def _wmedian(vals, w):
+    o = np.argsort(vals)
+    v, w = np.asarray(vals)[o], np.asarray(w)[o]
+    c = np.cumsum(w)
+    return float(v[np.searchsorted(c, c[-1] / 2)])
+
+
+def _locked_framing(tg, W, H, sx):
+    """One fixed crop for a run of keyframe targets: confidence-weighted median position, median zoom."""
+    w = [1.0 / max(k["x_unc_kf"] * sx, 1.0) ** 2 for k, _, _ in tg]
+    h = float(np.clip(np.median([b["h"] for _, b, _ in tg]), MIN_H_FRAC * H, H))
+    cx = _wmedian([b["cx"] for _, b, _ in tg], w)
+    cy = _wmedian([b["cy"] for _, b, _ in tg], w)
+    return clamp_center(cx, cy, h, W, H) + (h,)
+
+
+def _out_frac(tg, cx, h):
+    fs = [f[0] for _, _, f in tg if f]
+    if not fs:
+        return 0.0
+    safe = TP["safe"] * h * ASPECT / 2
+    return float(np.mean([abs(f - cx) > safe for f in fs]))
+
+
+def _longest_out_run(tg, cx, h):
+    """Longest stretch (seconds) of consecutive keyframes whose face is outside the fixed frame."""
+    safe = TP["safe"] * h * ASPECT / 2
+    best = run = 0
+    for _, _, f in tg:
+        run = run + 1 if (f and abs(f[0] - cx) > safe) else 0
+        best = max(best, run)
+    return best * KF_STEP
+
+
+def _split_locked(tg, s_a, s_b, W, H, sx, depth=0):
+    """Fixed framing for [s_a, s_b). Hard-cut once at the best change point (each side >= min_seg_s)
+    and recurse when the face leaves the frame too often overall OR for >= min_seg_s in a row
+    (a long shot must not dilute a real change, e.g. the other person starts talking).
+    Returns [(start, end, cx, cy, h)]."""
+    cx, cy, h = _locked_framing(tg, W, H, sx)
+    needs_split = _out_frac(tg, cx, h) > TP["out_frac"] or _longest_out_run(tg, cx, h) >= TP["min_seg_s"]
+    if depth < 3 and s_b - s_a >= 2 * TP["min_seg_s"] and needs_split:
+        xs = np.array([b["cx"] for _, b, _ in tg])
+        best, bt = None, None
+        for i in range(1, len(tg)):
+            t = tg[i][0]["t"]
+            if t - s_a < TP["min_seg_s"] or s_b - t < TP["min_seg_s"]:
+                continue
+            cost = xs[:i].var() * i + xs[i:].var() * (len(xs) - i)
+            if best is None or cost < best:
+                best, bt = cost, i
+        if bt is not None and abs(np.median(xs[:bt]) - np.median(xs[bt:])) > 0.10 * W:
+            t = tg[bt][0]["t"]
+            return (_split_locked(tg[:bt], s_a, t, W, H, sx, depth + 1)
+                    + _split_locked(tg[bt:], t, s_b, W, H, sx, depth + 1))
+    return [(s_a, s_b, cx, cy, h)]
+
+
+def _plan_locked(s0, clip, kfs, bounds, cam_cuts, kept_virtual, turns, W, H, fps, n, times, sx):
+    cx = np.zeros(n); cy = np.zeros(n); hh = np.zeros(n)
+    segs, shots, kf_log = [], [], []
+    for s_a, s_b in zip(bounds[:-1], bounds[1:]):
+        ks = [k for k in kfs if s_a <= k["t"] < s_b] or [min(kfs, key=lambda k: abs(k["t"] - (s_a + s_b) / 2))]
+        tg = [(k, *t) for k in ks if (t := _target(k, W, H, sx))]
+        parts = _split_locked(tg, s_a, s_b, W, H, sx) if tg else [(s_a, s_b, W / 2, H / 2, float(H))]
+        segs.extend(parts)
+        types = [k["shot"] for k in ks]
+        for a, b, *_ in parts:
+            shots.append({"start": float(a), "end": float(b), "type": max(set(types), key=types.count),
+                          "virtual": a in kept_virtual, "reframe_cut": a != s_a})
+        for k, b, f in tg:
+            kf_log.append({"t": k["t"], "target": b["cx"], "focus": f[0] if f else None, "pinned": False})
+    for a, b, x, y, h in segs:
+        idx = np.where((times >= a) & (times < b))[0]
+        cx[idx], cy[idx], hh[idx] = x, y, h
+    reframe_cuts = [a for a, *_ in segs if a not in bounds]
+    return {"clip": clip["clip"], "fps": fps, "W": W, "H": H, "cx": cx.tolist(), "cy": cy.tolist(), "h": hh.tolist(),
+            "shots": shots, "cuts": sorted(cam_cuts + kept_virtual + reframe_cuts), "camera_cuts": cam_cuts,
+            "virtual_cuts": kept_virtual, "reframe_cuts": reframe_cuts, "speaker_turns": turns, "kf": kf_log,
+            "mode": "locked"}
 
 
 # ---------------- main ----------------
@@ -388,7 +476,7 @@ def main():
         plan = plan_clip(s0, c, kfs, run)
         (run / f"plan_{ci:02d}.json").write_text(json.dumps(plan))
         print(f"[s4] clip {ci}: {len(plan['camera_cuts'])} camera cuts, {len(plan['virtual_cuts'])} speaker cuts "
-              f"(from {len(plan['speaker_turns'])} turns)")
+              f"(from {len(plan['speaker_turns'])} turns), {len(plan.get('reframe_cuts', []))} reframe cuts")
         if "render" in st:
             tag = f"{ci:02d}_{_hms(c['clip'][0]).replace(':', '-')}"
             render(video, plan, run / f"vertical_{tag}.mp4", run / f"debug_{tag}.mp4", kfs)

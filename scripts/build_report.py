@@ -249,7 +249,19 @@ def build_talk(out: Path, name: str = "interview"):
             ["Drex · 逐帧判断说话人和取景（画面）", n3, f"{t3:,} token", f"{timing.get('s3', 0):.0f}s", t3 * PRICE]]
     drex_usd = (t1 + t2 + t3) * PRICE
     s1 = json.loads((run / "s1.json").read_text())
-    return {"clips": clips, "windows": len(s1),
+    # camera stability: first version (smoothed follow, saved in follow_v1/) vs current locked framing
+    import eval_talk
+    def stab(fmt_):
+        rows = []
+        for ci in range(len(events)):
+            pf = run / fmt_.format(ci)
+            if pf.exists():
+                rows.append(eval_talk.metrics(json.loads(pf.read_text()), s3[str(ci)]))
+        D = sum(r["dur"] for r in rows) or 1
+        return {k: sum(r[k] * r["dur"] for r in rows) / D for k in ("pan_px_per_min", "swings_per_min", "moving_share", "face_in")}
+    stability = {"follow": stab("follow_v1/plan_{:02d}.json"), "locked": stab("plan_{:02d}.json")} \
+        if (run / "follow_v1").exists() else None
+    return {"clips": clips, "windows": len(s1), "stability": stability,
             "cost": {"rows": rows, "ndi": ndi_usd, "drex": drex_usd, "total": ndi_usd + drex_usd},
             # measured wall-clock of the runs: s0+NDI ~55s, Whisper sentences + s1 ~48s, s3 + render ~108s
             "time": {"total": 55 + 48 + 108}}

@@ -412,7 +412,7 @@ table.diff td{vertical-align:top;line-height:1.55}
         <ul class="needs">
           <li><span><b>找观点：</b>从 30 分钟对话里挑出能独立成立的观点或故事，开头结尾不断在半句话上。</span></li>
           <li><span><b>跟说话人：</b>每一帧对准正在说话的人；说话人不在画面里时，对准最相关的听众。</span></li>
-          <li><span><b>切而不扫：</b>换人时直接切过去，不左右横扫；一个人说话时画面稳住不动。</span></li>
+          <li><span><b>切而不扫：</b>人坐着不动，镜头也不该动；换人时直接切过去，不左右横扫。</span></li>
         </ul>
       </div>
     </div>
@@ -427,7 +427,7 @@ table.diff td{vertical-align:top;line-height:1.55}
       <tbody>
         <tr><td>找片段</td><td>解说关键词和欢呼声召回，Drex 看 8 帧画面确认是不是进球</td><td>NDI 转写带说话人分离；转写按句编号放进 Drex，给 70 个 25–60 秒的窗口逐个打分，再让 Drex 选从哪一句开始、到哪一句结束</td></tr>
         <tr><td>每帧看哪里</td><td>Drex 在栅格上选出球和相关球员的范围</td><td>Drex 先回答说话人在画面左、中还是右，再在栅格上框出这个人的头和肩</td></tr>
-        <tr><td>运镜</td><td>平滑跟随，球必须在框内</td><td>画面基本静止，脸必须在框内；同一镜头里换人说话时直接切，不横扫</td></tr>
+        <tr><td>运镜</td><td>平滑跟随，球必须在框内</td><td>固定机位：每个镜头只取一个位置，镜头内完全不平移；换人说话或人脸连续 2 秒出框时直接硬切</td></tr>
       </tbody>
     </table></div>
     <ol class="flow" aria-label="口播处理流程">
@@ -435,14 +435,14 @@ table.diff td{vertical-align:top;line-height:1.55}
       <li><b>Drex · 文本</b><span>70 个窗口打分</span></li>
       <li><b>Drex · 文本</b><span>选开头和结尾句</span></li>
       <li><b>Drex · 画面</b><span>每 0.5 秒：谁在说、框头肩</span></li>
-      <li><b>本地</b><span>换人硬切、单人静止</span></li>
+      <li><b>本地</b><span>固定机位，只用硬切</span></li>
     </ol>
   </section>
 
   <section>
     <div class="eyebrow">短视频</div>
     <h2>5 条竖屏输出</h2>
-    <p class="muted">每条右侧是调试视图（黄框为 Drex 框出的说话人，青框为最终裁切）和说话人时间轴。原片本身已经剪辑过，镜头切换大多正好落在换人的时刻，所以虚拟切换这一次没有触发。</p>
+    <p class="muted">每条右侧是调试视图（黄框为 Drex 框出的说话人，青框为最终裁切）和说话人时间轴。时间轴最下面一行是竖屏取景位置：每段都是一条水平线，只在镜头切换处跳变。原片本身已经剪辑过，镜头切换大多正好落在换人的时刻。</p>
     <div class="legend">
       <span><i class="sw" style="background:var(--spk-a)"></i>说话人 A</span>
       <span><i class="sw" style="background:var(--spk-b)"></i>说话人 B</span>
@@ -450,6 +450,14 @@ table.diff td{vertical-align:top;line-height:1.55}
       <span><i class="sw" style="border-left:2px dashed var(--muted);width:2px;height:12px"></i>原片镜头切换</span>
     </div>
     <div class="clips" id="tClips"></div>
+  </section>
+
+  <section>
+    <div class="eyebrow">运镜稳定性</div>
+    <h2>从“平滑跟随”改成“固定机位”</h2>
+    <p class="muted">第一版沿用足球的平滑跟随：Drex 每 0.5 秒给出的位置有几十像素的抖动，跟着走就成了漂移，而画面里的人基本坐着不动。第二版每个镜头只取一个位置（Drex 判断的加权中位数），需要换位置时用硬切代替平移。</p>
+    <div class="tablewrap"><table id="tStab"></table></div>
+    <p class="muted" style="font-size:13px">5 条片段合计。“人脸在框内”以 Drex 自己判断的人脸位置为参照，没有人工标注。</p>
   </section>
 
   <section>
@@ -464,7 +472,7 @@ table.diff td{vertical-align:top;line-height:1.55}
     <h2>还没解决的</h2>
     <ul class="notes">
       <li><b>有的片段从半句话开始。</b>NDI 的分段较粗（中位数约 17 秒），所以用本地 Whisper 断句；但 Whisper 这次几乎没输出标点，切出的“句子”不完整，Drex 只能在里面挑。下一步：用词级时间戳和更大的模型重新断句。</li>
-      <li><b>换人瞬间可能停在两人中间。</b>例如第 1 条开头：说话人刚换、原片还没切镜头的约 1.5 秒里，裁切框停在两人之间。</li>
+      <li><b>短于 2 秒的变化不会触发切换。</b>为了不频繁切镜头，人脸连续出框 2 秒以上才切，所以刚换人的头 1–2 秒可能还停在上一位身上。固定机位后人脸在框内的比例从 99% 降到 97%，换来的是镜头内零平移。</li>
       <li><b>说话人跟随只抽查了 2 条。</b>没有人工标注，判断依据是调试视频目测。</li>
       <li><b>虚拟切换没有经过验证。</b>它为单机位、未剪辑的素材设计，这条素材用不上，需要换一段单机位双人对话来测。</li>
     </ul>
@@ -619,6 +627,13 @@ if (T) {
   ].map(([b, t]) => `<div><b>${b}</b><span>${t}</span></div>`).join("");
   $("#tCost").innerHTML = `<thead><tr><th>环节</th><th class="n">调用</th><th class="n">计费量</th><th class="n">耗时</th><th class="n">费用</th></tr></thead><tbody>` +
     T.cost.rows.map(r => `<tr><td>${esc(r[0])}</td><td class="n">${r[1]}</td><td class="n">${esc(r[2])}</td><td class="n">${esc(r[3])}</td><td class="n">${usd(r[4])}</td></tr>`).join("") + `</tbody>`;
+  const ST = T.stability;
+  if (ST) {
+    const pc = v => Math.round(v * 100) + "%";
+    $("#tStab").innerHTML = `<thead><tr><th>版本</th><th class="n">镜头内平移</th><th class="n">来回摆动</th><th class="n">取景框在动的时间</th><th class="n">人脸在框内</th></tr></thead><tbody>
+      <tr><td>第一版：平滑跟随</td><td class="n">${fmt(Math.round(ST.follow.pan_px_per_min))} px / 分钟</td><td class="n">${ST.follow.swings_per_min.toFixed(1)} 次 / 分钟</td><td class="n">${pc(ST.follow.moving_share)}</td><td class="n best">${pc(ST.follow.face_in)}</td></tr>
+      <tr class="ours"><td>当前：固定机位 + 硬切</td><td class="n best">${fmt(Math.round(ST.locked.pan_px_per_min))} px / 分钟</td><td class="n best">${ST.locked.swings_per_min.toFixed(1)} 次 / 分钟</td><td class="n best">${pc(ST.locked.moving_share)}</td><td class="n">${pc(ST.locked.face_in)}</td></tr></tbody>`;
+  }
   const SPK = ["var(--spk-a)", "var(--spk-b)", "var(--spk-c)", "var(--muted)"];
   const WHO_Y = {left: 0, center: 1, right: 2};
   function lanes(c) {
