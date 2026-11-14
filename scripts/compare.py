@@ -77,7 +77,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--drex-run", default="clasico")
     ap.add_argument("--gemini-run", default="gemini_aligned_clasico")
-    ap.add_argument("--events", default="1,3,5,6")
+    ap.add_argument("--events", default="", help="default: every clip that has a Gemini plan")
     a = ap.parse_args()
     drex = ROOT / "runs" / a.drex_run
     gem = ROOT / "runs" / a.gemini_run
@@ -90,7 +90,8 @@ def main():
     n_clips_s3 = len(s3)
     timing = json.loads((drex / "timing.json").read_text())
     gsum = {e["event_index"]: e for e in json.loads((gem / "summary.json").read_text())}
-    idx = [int(x) for x in a.events.split(",")]
+    idx = ([int(x) for x in a.events.split(",")] if a.events
+           else sorted(i for i in gsum if (gem / f"event_{i:02d}_plan.json").exists()))
 
     acc = {m: {"in_d": 0, "n_d": 0, "in_g": 0, "n_g": 0, "sw": 0, "dur": 0.0} for m in ("center", "gemini", "drex")}
     clips = []
