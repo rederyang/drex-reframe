@@ -88,11 +88,16 @@ TARGET_DEF = (
 )
 
 
-def edge_questions(grid: Grid, image_k: int = 1, prefix: str = "") -> dict:
-    """Four choice questions: left/right (vertical line numbers), top/bottom (letters)."""
+FOCUS_DEF = ("If only ONE spot could stay in view, it would be the ball (in live play) or the main "
+             "person's face (in a close-up).")
+
+
+def edge_questions(grid: Grid, image_k: int = 1, prefix: str = "", target_def: str = TARGET_DEF,
+                   focus_def: str = FOCUS_DEF) -> dict:
+    """Six choice questions: region left/right/top/bottom + focus x/y, as grid line labels."""
     xs = {lab: None for lab in grid.xlabels}
     ys = {lab: None for lab in grid.ylabels}
-    base = f"Look at Image {image_k}. {grid.legend()} {TARGET_DEF} "
+    base = f"Look at Image {image_k}. {grid.legend()} {target_def} "
     return {
         f"{prefix}left": {"type": "choice", "criteria": xs,
                           "instructions": base + "Which numbered vertical line is closest to the LEFT edge of the must-keep region?"},
@@ -104,9 +109,9 @@ def edge_questions(grid: Grid, image_k: int = 1, prefix: str = "") -> dict:
                             "instructions": base + "Which lettered horizontal line is closest to the BOTTOM edge of the must-keep region?"},
         # Focus point: used to center the crop when the region is wider than a 9:16 box can hold.
         f"{prefix}focus_x": {"type": "choice", "criteria": xs,
-                             "instructions": base + "If only ONE spot could stay in view, it would be the ball (in live play) or the main person's face (in a close-up). Which numbered vertical line is closest to that spot?"},
+                             "instructions": base + focus_def + " Which numbered vertical line is closest to that spot?"},
         f"{prefix}focus_y": {"type": "choice", "criteria": ys,
-                             "instructions": base + "If only ONE spot could stay in view, it would be the ball (in live play) or the main person's face (in a close-up). Which lettered horizontal line is closest to that spot?"},
+                             "instructions": base + focus_def + " Which lettered horizontal line is closest to that spot?"},
     }
 
 

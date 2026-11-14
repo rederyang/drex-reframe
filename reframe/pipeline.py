@@ -87,7 +87,8 @@ def _transcript_segments(job: dict) -> list[dict]:
                 if isinstance(txt, list):
                     txt = " ".join(str(x.get("text", x)) if isinstance(x, dict) else str(x) for x in txt)
                 if (o.get("type") or o.get("kind")) != "silence" and txt:
-                    segs.append({"start": o["start_ms"] / 1000, "end": o["end_ms"] / 1000, "text": str(txt)})
+                    segs.append({"start": o["start_ms"] / 1000, "end": o["end_ms"] / 1000, "text": str(txt),
+                                 "speaker": o.get("speaker")})
                     return
             for v in o.values():
                 walk(v)
@@ -96,6 +97,36 @@ def _transcript_segments(job: dict) -> list[dict]:
                 walk(v)
     walk(tr)
     return segs
+
+
+NDI_CHUNK_S = 600  # NDI's internal Whisper rejects >50 MB (≈ 26 min of 16 kHz WAV); 10-min chunks are safe
+
+
+def _ndi_chunked(audio: Path, dur: float, run: Path) -> list[dict]:
+    """NDI Parse in 10-minute chunks (parallel). Speaker ids are only consistent WITHIN a chunk,
+    so they are prefixed with the chunk index (c0:SPEAKER_01)."""
+    chunks = []
+    for i, c0 in enumerate(np.arange(0, dur, NDI_CHUNK_S)):
+        part = run / f"audio_part{i}.m4a"
+        if not part.exists():
+            subprocess.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-ss", str(c0), "-t",
+                            str(NDI_CHUNK_S), "-i", str(audio), "-c", "copy", str(part)], check=True)
+        chunks.append((i, float(c0), part))
+
+    def one(ch):
+        i, c0, part = ch
+        cache = run / f"ndi_part{i}.json"
+        job = json.loads(cache.read_text()) if cache.exists() else ndi_parse_file(part)
+        cache.write_text(json.dumps(job, indent=1))
+        segs = _transcript_segments(job)
+        for sg in segs:
+            sg["start"] += c0
+            sg["end"] += c0
+            if sg.get("speaker"):
+                sg["speaker"] = f"c{i}:{sg['speaker']}"
+        return segs
+    with ThreadPoolExecutor(3) as ex:
+        return [sg for segs in ex.map(one, chunks) for sg in segs]
 
 
 def _whisper_segments(audio: Path) -> list[dict]:
@@ -117,9 +148,7 @@ def stage0(video: Path, start: float, dur: float, run: Path, asr: str) -> dict:
         transcript, asr_used, asr_err = [], None, None
         if asr in ("ndi", "auto"):
             try:
-                job = ndi_parse_file(audio)
-                (run / "ndi_job.json").write_text(json.dumps(job, indent=1))
-                transcript, asr_used = _transcript_segments(job), "ndi"
+                transcript, asr_used = _ndi_chunked(audio, dur, run), "ndi"
             except Exception as e:  # keep the demo moving
                 asr_err = repr(e)[:500]
         if not transcript and asr in ("whisper", "auto"):
