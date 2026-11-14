@@ -1,0 +1,30 @@
+[
+  {
+    "source_id": "el-clasico",
+    "file": "videos/el-clasico-2017.mp4",
+    "source_url": "https://www.youtube.com/watch?v=3j_daNHio4o",
+    "duration_seconds": 6197.730975,
+    "size_bytes": 1314722922,
+    "width": 1280,
+    "height": 720,
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "audio_language": "en-US",
+    "audio_track": "YouTube original/default, format 140-7",
+    "validation": "Video and audio streams present; duration matches source metadata; final seconds decoded successfully."
+  },
+  {
+    "source_id": "belgium-japan",
+    "file": "videos/belgium-japan-2018.mp4",
+    "source_url": "https://www.youtube.com/watch?v=GrkiZjoyugA",
+    "duration_seconds": 6143.582041,
+    "size_bytes": 2500455286,
+    "width": 1920,
+    "height": 1080,
+    "video_codec": "h264",
+    "audio_codec": "aac",
+    "audio_language": "en-US",
+    "audio_track": "YouTube original/default, format 140-7",
+    "validation": "Video and audio streams present; duration matches source metadata; final seconds decoded successfully."
+  }
+]
