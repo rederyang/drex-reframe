@@ -41,7 +41,7 @@ Pipeline (`reframe/pipeline.py`):
 
 Results on the 30-minute window:
 
-- **Events:** 20 candidates → 8 clips, and all **4/4 key moments** are cut on time. Two of the 8 clips are duplicates (a replay or celebration after a goal); dedup is a known issue.
+- **Events:** 20 candidates → 8 clips, and all **4/4 key moments** are cut on time. Two of the 8 clips are a replay or celebration after a goal.
 - **Cost and time:** 67 Drex calls and 983k input tokens, about **$0.03**. The whole window runs in under 3 minutes: s0 ~70 s (local transcription), s1 26 s, s3 73 s for 344 keyframes, and ~9 s render per clip.
 - **Ball in frame:** the crop missed Drex's own ball reading **43% → 1%** of the time once the smoothing weights were fixed and the ball constraint added. They had been ~40,000× too weak, which flattened the camera path.
 - **Grid feasibility (30 frames):** about 2.7k input tokens per frame and 1.7 s p50 latency. Subtracting Drex's uniform probability floor before decoding halved the positional uncertainty.
