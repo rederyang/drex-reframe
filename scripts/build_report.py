@@ -24,14 +24,14 @@ import scene_svg  # noqa: E402
 
 # Ground truth for the El Clásico window, from the broadcast commentary (transcript) + match record.
 KNOWN = [
-    (4885, "73′ 拉基蒂奇进球"),
-    (5167, "77′ 拉莫斯红牌"),
-    (5653, "85′ J 罗扳平"),
-    (6062, "92′ 梅西绝杀"),
+    (4885, "73′ Rakitić goal"),
+    (5167, "77′ Ramos red card"),
+    (5653, "85′ James equalizer"),
+    (6062, "92′ Messi winner"),
 ]
-EVENT_ZH = {"goal": "进球", "own_goal": "乌龙球", "big_chance": "射门 / 机会", "card": "红黄牌",
-            "skill": "精彩个人表现", "foul_or_stoppage": "犯规 / 停顿", "none": "无事件"}
-CAT_ZH = {"wide": "远景", "closeup": "特写", "replay": "回放"}
+EVENT_ZH = {"goal": "Goal", "own_goal": "Own goal", "big_chance": "Shot / chance", "card": "Card",
+            "skill": "Skill move", "foul_or_stoppage": "Foul / stoppage", "none": "No event"}
+CAT_ZH = {"wide": "Wide", "closeup": "Close-up", "replay": "Replay"}
 
 
 def sh(*a):
@@ -42,11 +42,11 @@ def verdict(e):
     t = e["t_peak"]
     for kt, name in KNOWN:
         if abs(t - kt) <= 15:
-            return "hit", f"命中：{name}"
+            return "hit", f"Hit: {name}"
     for kt, name in KNOWN:
         if 0 < t - kt <= 90:
-            return "dup", f"重复：{name}之后的回放或庆祝"
-    return "extra", "额外候选（不在 4 个关键事件内）"
+            return "dup", f"Duplicate: replay or celebration after {name}"
+    return "extra", "Extra candidate (not one of the 4 key events)"
 
 
 def main():
@@ -127,7 +127,7 @@ def main():
         b["in"] += (u.get("usage") or {}).get("input_tokens", 0) or 0
         b["img"] += (u.get("usage") or {}).get("image_tokens", 0) or 0
         b["lat"].append(u["latency_s"])
-    tag_zh = {"s1_confirm": "s1 事件确认", "s3_keyframes": "s3 关键帧裁切", f"gridexp_{a.variant}": "栅格实验（30 帧）"}
+    tag_zh = {"s1_confirm": "s1 event confirmation", "s3_keyframes": "s3 keyframe crop", f"gridexp_{a.variant}": "Grid experiment (30 frames)"}
     cost_rows = []
     for t, b in by_tag.items():
         lat = sorted(b["lat"])
@@ -174,7 +174,7 @@ def main():
                 sh("ffmpeg", "-y", "-loglevel", "error", "-ss", "8", "-i", str(out / "media" / v), "-frames:v", "1",
                    "-q:v", "6", str(out / "media" / v.replace(".mp4", ".jpg")))
             ev = events[ei]
-            c["label"] = verdict(ev)[1].replace("命中：", "")
+            c["label"] = verdict(ev)[1].replace("Hit: ", "")
     # ---- per-clip Drex vs Gemini numbers for the football rows
     s3fb = json.loads((run / "s3.json").read_text())
     n_kf_all = sum(len(v) for v in s3fb.values())
@@ -346,10 +346,10 @@ def build_talk(out: Path, name: str = "interview"):
     # the s3 log also holds a one-clip trial run; count only the full run
     n3, t3 = round(n3 * n_kf_full / (n_kf_full + extra)), round(tok_kf * n_kf_full)
     timing = json.loads((run / "timing.json").read_text())
-    rows = [["NDI 转写 + 说话人分离（3 段 × 10 分钟，并行）", 3, "30 分钟音频", "约 25s", ndi_usd],
-            ["Drex · 候选窗口打分（文本）", n1, f"{t1:,} token", f"{l1:.0f}s", t1 * PRICE],
-            ["Drex · 选开头和结尾句（文本）", n2, f"{t2:,} token", f"{l2:.0f}s", t2 * PRICE],
-            ["Drex · 逐帧判断说话人和取景（画面）", n3, f"{t3:,} token", f"{timing.get('s3', 0):.0f}s", t3 * PRICE]]
+    rows = [["NDI transcription + diarization (3 × 10 min, parallel)", 3, "30 min audio", "~25s", ndi_usd],
+            ["Drex · score candidate windows (text)", n1, f"{t1:,} token", f"{l1:.0f}s", t1 * PRICE],
+            ["Drex · pick opening and closing sentences (text)", n2, f"{t2:,} token", f"{l2:.0f}s", t2 * PRICE],
+            ["Drex · per-frame speaker and framing (vision)", n3, f"{t3:,} token", f"{timing.get('s3', 0):.0f}s", t3 * PRICE]]
     drex_usd = (t1 + t2 + t3) * PRICE
     s1 = json.loads((run / "s1.json").read_text())
     # camera stability: first version (smoothed follow, saved in follow_v1/) vs current locked framing
