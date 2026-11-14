@@ -2,31 +2,19 @@
 
 Turns a full landscape football match into vertical (9:16) highlight clips. Drex Max decides what each frame should show, and plain code turns those decisions into a smooth camera path.
 
-## Demo
+## Live demo
 
-Includes six short Scene1 clips and four recorded runs. The original match video is not required.
-
-### Offline replay
-
-Requires Python 3 only; no API key or network access.
-
-```bash
-python3 scripts/serve_replay.py
-```
-
-Open the [offline demo](http://127.0.0.1:8504/replay/) to explore recorded requests, responses and vertical videos.
-
-### Live inference
+Run key region detection and 9:16 reframing on six bundled Scene1 clips with preset or custom viewing goals.
 
 ```bash
 conda env create -f demo/environment.yml
 conda activate drex-reframe-demo
 cp .env.example .env
-# Edit .env and set your own NACE_API_KEY.
+# Set NACE_API_KEY in .env.
 streamlit run demo/app.py --server.address 127.0.0.1 --server.port 8503 --server.runOnSave false
 ```
 
-Open the [live demo](http://127.0.0.1:8503/) to run NACE with preset or custom viewing goals. The environment includes FFmpeg.
+Open the [live demo](http://127.0.0.1:8503/). The environment includes FFmpeg.
 
 ## Pipeline (`reframe/pipeline.py`)
 
