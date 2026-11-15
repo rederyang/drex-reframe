@@ -99,7 +99,6 @@ cdir = CASES / cid
 talk = case["scenario"] == "talk"
 
 st.subheader(case["title"])
-st.caption(case["subtitle"] + f"  ·  recorded {case['recorded_at']} (Drex was re-run on this clip to keep every raw answer)")
 
 with st.expander("What is new compared with existing auto-reframe", expanded=False):
     st.html("""<ul class="why">
@@ -122,9 +121,6 @@ m[5].metric("Gemini decision time", f"{g.get('time_s', 0):.0f} s" if g else "–
 
 # ------------------------------------------------------------------ synced replay
 st.markdown("## Synced replay: model output follows the playhead")
-st.caption("The debug view shows the source with Drex's keep region (yellow) and the final 9:16 crop (blue). "
-           "The faint grid is exactly what Drex reads; the lines it picked for the current keyframe light up. "
-           "The panel shows Drex's raw answers for the keyframe on screen. Click the timeline to seek.")
 
 kf_imgs = {r["img"]: b64(str(cdir / r["img"])) for r in case["keyframes"]}
 payload = {"talk": talk, "dur": case["clip"]["duration"], "W": case["clip"]["W"], "H": case["clip"]["H"],
@@ -149,7 +145,6 @@ else:
 
 # ------------------------------------------------------------------ stage by stage
 st.markdown("## Pipeline, step by step")
-st.caption("Each step's input, configuration and output for this clip. Model outputs are the raw answers from the recorded run.")
 S = case["stages"]
 tabs = st.tabs(["s0 · Structure" + (" (NDI)" if talk else ""), "s1 · Find the moment", "s3 · Drex per frame",
                 "s4 · Camera path", "Render & compare"])
@@ -171,7 +166,6 @@ with tabs[0]:
             st.dataframe(s0["output"]["ndi_segments_raw"], hide_index=True, width="stretch", height=220)
             st.markdown("**Sentence lines** (Whisper timing + NDI speaker), seconds relative to the clip")
             st.dataframe(s0["output"]["sentence_lines"], hide_index=True, width="stretch", height=220)
-            st.caption(s0["output"]["note"])
         else:
             cuts_in = s0["output"]["shot_cuts_in_clip_s"]
             st.markdown("**Shot cuts inside the clip:** " + (", ".join(f"{c:.1f} s" for c in cuts_in) if cuts_in else "none (one continuous shot)"))
@@ -193,7 +187,7 @@ with tabs[1]:
             st.html('<div class="k">Configuration</div>')
             st.markdown(f"Window length {s1['config']['window_s']} s · score scale: " + " → ".join(s1["config"]["score_scale"]))
             for q in s1["config"]["edge_questions"]:
-                st.caption(f"**{q['id']}** (choice over {len(q['options'])} lines): {q['instructions']}")
+                st.markdown(f"**{q['id']}** (choice over {len(q['options'])} lines): {q['instructions']}")
         with o:
             st.html('<div class="k">Output</div>')
             out = s1["output"]
@@ -206,14 +200,15 @@ with tabs[1]:
         st.html('<div class="k">Input · 8 frames around the candidate + nearby commentary</div>')
         cols = st.columns(8)
         for col, f in zip(cols, s1["input"]["frames"]):
-            col.image(str(cdir / f["img"]), caption=f"{f['t_rel']:+.0f} s", width="stretch")
-        st.caption(f"Recall score {s1['input']['recall_score']} (keywords + crowd noise, z = {s1['input']['crowd_noise_z']}). State: {s1['input']['state']}")
+            col.markdown(f"**{f['t_rel']:+.0f} s**")
+            col.image(str(cdir / f["img"]), width="stretch")
+        st.markdown(f"Recall score {s1['input']['recall_score']} (keywords + crowd noise, z = {s1['input']['crowd_noise_z']}). State: {s1['input']['state']}")
         c, o = st.columns([1, 1])
         with c:
             st.html('<div class="k">Configuration · questions</div>')
             for q in s1["config"]["questions"]:
-                st.caption(f"**{q['id']}** ({q['type']}, {len(q['options'])} options): {q['instructions']}")
-            st.caption(s1["config"]["clip_rule"])
+                st.markdown(f"**{q['id']}** ({q['type']}, {len(q['options'])} options): {q['instructions']}")
+            st.markdown(s1["config"]["clip_rule"])
         with o:
             st.html('<div class="k">Output</div>')
             a = s1["output"]["answers"]
@@ -241,7 +236,8 @@ with tabs[2]:
     r = case["keyframes"][idx]
     left, right = st.columns([3, 2])
     with left:
-        st.image(str(cdir / r["img"]), caption=f"Model input at {r['t_rel']:.1f} s (Image {r['image_k']} of request {r['batch'] + 1})", width="stretch")
+        st.markdown(f"**Model input at {r['t_rel']:.1f} s** · Image {r['image_k']} of request {r['batch'] + 1}")
+        st.image(str(cdir / r["img"]), width="stretch")
     with right:
         qsel = st.radio("Question", list(r["answers"]), horizontal=True, key="qsel")
         ans = r["answers"][qsel]
@@ -273,9 +269,9 @@ with tabs[3]:
 with tabs[4]:
     st.markdown(S["render"]["output"])
     v1, v2, v3 = st.columns([1, 1, 2])
-    v1.caption("Drex vertical"); v1.video(str(cdir / "vertical.mp4"))
+    v1.markdown("**Drex vertical**"); v1.video(str(cdir / "vertical.mp4"))
     if (cdir / "gemini.mp4").exists():
-        v2.caption(f"Gemini vertical ({g.get('model', '')})"); v2.video(str(cdir / "gemini.mp4"))
+        v2.markdown(f"**Gemini vertical** ({g.get('model', '')})"); v2.video(str(cdir / "gemini.mp4"))
     with v3:
         st.html('<div class="k">Drex vs Gemini on this clip</div>')
         acc = C.get("this_run") or C.get("flyer_run")
@@ -285,6 +281,3 @@ with tabs[4]:
             rows[0][f"{C['metric']} (Drex ref / Gemini ref)"] = f"{acc['drex'][0]:.0%} / {acc['drex'][1]:.0%}"
             rows[1][f"{C['metric']} (Drex ref / Gemini ref)"] = f"{acc['gemini'][0]:.0%} / {acc['gemini'][1]:.0%}"
         st.dataframe(rows, hide_index=True, width="stretch")
-        st.caption("No human labels: “in frame” is measured against each model's own reading. Gemini makes the per-frame decision "
-                   "on the same clip, and the same planner and renderer turn it into video. "
-                   + ("Football accuracy numbers are from the results-page run." if not talk else ""))
