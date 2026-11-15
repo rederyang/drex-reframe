@@ -187,6 +187,47 @@ def pick_clips(s1: list[dict], s0: dict, run: Path) -> list[dict]:
 
 # ---------------- s3: who is speaking, where ----------------
 
+def said_between(s0: dict, run: Path, t0: float, t1: float) -> str:
+    """Transcript (diarized speaker ids) spoken between absolute times t0 and t1."""
+    rel0, rel1 = t0 - s0["start"], t1 - s0["start"]
+    return " ".join(f"[{s.get('speaker') or '?'}] {s['text'].strip()}" for s in lines(s0, run)
+                    if s["end"] >= rel0 and s["start"] <= rel1)[:900]
+
+
+def prepare_talk_batch(frames: list, said: str) -> dict:
+    """Build one s3 request for the interview profile (shared by the pipeline and the demo recorder)."""
+    images = [GRID.draw(im) for _, im in frames]
+    q = {}
+    for k in range(1, len(frames) + 1):
+        q[f"f{k}_shot"] = {"type": "choice", "criteria": SHOT_TYPES,
+                           "instructions": f"What kind of shot is Image {k}?"}
+        q[f"f{k}_who"] = {"type": "choice", "criteria": SPEAKER_POS,
+                          "instructions": f"In Image {k}, where is the person who is speaking at that moment?"}
+        q.update(edge_questions(GRID, image_k=k, prefix=f"f{k}_", target_def=TALK_TARGET, focus_def=TALK_FOCUS))
+    state = (f"{len(frames)} consecutive frames (Image 1..Image {len(frames)}, {KF_STEP}s apart) from an "
+             f"interview video that will be reframed to a 9:16 vertical crop that follows whoever is "
+             f"speaking. Transcript of what is said during these frames (diarized speaker ids): \"{said}\"")
+    return {"state": state, "questions": q, "images": images}
+
+
+def detect_talk_batch(frames: list, said: str) -> dict:
+    """Execute and decode one interview s3 batch."""
+    prepared = prepare_talk_batch(frames, said)
+    r = drex(prepared["state"], prepared["questions"], prepared["images"], tag="talk_s3")
+    W, H = frames[0][1].size
+    rows, decoded = [], []
+    for k, (t, _) in enumerate(frames, start=1):
+        dec = decode_region(r["answers"], GRID, W, H, prefix=f"f{k}_")
+        rows.append({"t": t, "shot": r["answers"][f"f{k}_shot"]["choice"],
+                     "shot_probs": r["answers"][f"f{k}_shot"]["probabilities"],
+                     "who": r["answers"][f"f{k}_who"]["choice"],
+                     "who_probs": r["answers"][f"f{k}_who"]["probabilities"],
+                     "region_kf": dec["region"], "focus_kf": dec.get("focus"),
+                     "x_unc_kf": dec["x_uncertainty_px"], "flags": dec["flags"], "kf_W": W, "kf_H": H})
+        decoded.append(dec)
+    return {"keyframes": rows, "decoded": decoded, "response": r, "prepared": prepared}
+
+
 def stage3(video: Path, s0: dict, clips: list[dict], run: Path, cache: str = "s3.json") -> dict:
     def build():
         jobs = []
@@ -196,37 +237,10 @@ def stage3(video: Path, s0: dict, clips: list[dict], run: Path, cache: str = "s3
             for b in range(0, len(frames), BATCH):
                 jobs.append((ci, frames[b:b + BATCH]))
 
-        def said(t0, t1):
-            rel0, rel1 = t0 - s0["start"], t1 - s0["start"]
-            return " ".join(f"[{s.get('speaker') or '?'}] {s['text'].strip()}" for s in lines(s0, run)
-                            if s["end"] >= rel0 and s["start"] <= rel1)[:900]
-
         def run_batch(job):
             ci, fr = job
-            imgs = [GRID.draw(im) for _, im in fr]
-            q = {}
-            for k in range(1, len(fr) + 1):
-                q[f"f{k}_shot"] = {"type": "choice", "criteria": SHOT_TYPES,
-                                   "instructions": f"What kind of shot is Image {k}?"}
-                q[f"f{k}_who"] = {"type": "choice", "criteria": SPEAKER_POS,
-                                  "instructions": f"In Image {k}, where is the person who is speaking at that moment?"}
-                q.update(edge_questions(GRID, image_k=k, prefix=f"f{k}_", target_def=TALK_TARGET,
-                                        focus_def=TALK_FOCUS))
-            state = (f"{len(fr)} consecutive frames (Image 1..Image {len(fr)}, {KF_STEP}s apart) from an "
-                     f"interview video that will be reframed to a 9:16 vertical crop that follows whoever is "
-                     f"speaking. Transcript of what is said during these frames (diarized speaker ids): "
-                     f"\"{said(fr[0][0], fr[-1][0] + KF_STEP)}\"")
-            r = drex(state, q, imgs, tag="talk_s3")
-            W, H = fr[0][1].size
-            rows = []
-            for k, (t, _) in enumerate(fr, start=1):
-                dec = decode_region(r["answers"], GRID, W, H, prefix=f"f{k}_")
-                rows.append({"t": t, "shot": r["answers"][f"f{k}_shot"]["choice"],
-                             "who": r["answers"][f"f{k}_who"]["choice"],
-                             "who_probs": r["answers"][f"f{k}_who"]["probabilities"],
-                             "region_kf": dec["region"], "focus_kf": dec.get("focus"),
-                             "x_unc_kf": dec["x_uncertainty_px"], "flags": dec["flags"], "kf_W": W, "kf_H": H})
-            return ci, rows
+            said = said_between(s0, run, fr[0][0], fr[-1][0] + KF_STEP)
+            return ci, detect_talk_batch(fr, said)["keyframes"]
 
         out = {}
         with ThreadPoolExecutor(2) as ex:

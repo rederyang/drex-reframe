@@ -130,6 +130,20 @@ python3 scripts/build_report.py --name clasico --variant g16f
 - **Not committed:** `.env`, `runs/` and the source videos. The video sources are listed in `samples/football-keyframes/README.md`.
 - **Rate limits:** requests are throttled to one every 0.6 s and honor `retry-after`. Shared venue Wi-Fi can trip the console's Vercel checkpoint (HTTP 403); wait briefly, or switch networks.
 
+## Playground
+
+```bash
+streamlit run demo/playground.py   # Case studies + Live detection
+```
+
+- **Case studies:** two recorded end-to-end runs, one football clip (the 73′ goal replay and celebration) and one interview clip (“a gigawatt cluster for a year”).
+  - **Synced replay:** the debug view, the Drex vertical and the `gemini-4-hydrogen` vertical play together.
+  - **Grid and live output:** the 16×9 grid Drex reads is overlaid, and the lines it picked light up. A panel follows the playhead with what Drex saw (the gridded model input), its full answer distributions, the decoded region and the final crop, plus the commentary or the NDI-diarized line heard at that moment.
+  - **Step by step:** every stage (s0 structure / NDI, s1 finding the moment, s3 Drex per frame, s4 camera path, render) is laid out as input / configuration / output.
+- **Live detection:** run Drex on a bundled 4-second clip (`demo/app.py`, which can also run on its own).
+
+Cases are recorded with `scripts/record_demo_case.py` into `demo/assets/cases/<id>/`. Recording re-runs Drex on the clip so every raw answer is kept (about $0.003–0.004 per case); NDI output comes from the original interview run.
+
 ## Portable Scene1 demo
 
 This branch includes everything needed to demonstrate the main pipeline: **six four-second input clips**, four real recorded runs, exact model-input JPEGs, responses, probabilities, crop previews and rendered videos. The full match, API keys and machine-specific paths are not included. Git LFS is not required.
