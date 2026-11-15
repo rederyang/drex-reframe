@@ -11,3 +11,4 @@ sites-replay/
 
 # interview footage (identifiable people) stays local; see README > Playground
 demo/assets/cases/interview-*/
+demo/assets/why/talk_*

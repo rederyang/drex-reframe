@@ -136,6 +136,7 @@ python3 scripts/build_report.py --name clasico --variant g16f
 streamlit run demo/playground.py   # Case studies + Live detection
 ```
 
+- **Why it matters:** opens with the results page's two animated examples (original 16:9 vs. repost as-is, center crop and Drex framing, as mock feed players).
 - **Case studies:** two recorded end-to-end runs, one football clip (the 73′ goal replay and celebration) and one interview clip (“a gigawatt cluster for a year”).
   - **Synced replay:** the debug view, the Drex vertical and the `gemini-4-hydrogen` vertical play together.
   - **Grid and live output:** the 16×9 grid Drex reads is overlaid, and the lines it picked light up. A panel follows the playhead with what Drex saw (the gridded model input), its full answer distributions, the decoded region and the final crop, plus the commentary or the NDI-diarized line heard at that moment.

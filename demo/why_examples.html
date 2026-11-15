@@ -1,0 +1,137 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Same "Why it matters" block as the results page (scripts/report_template.html), self-contained for the playground. */
+:root{--bg:#f6f8f6;--surface:#fff;--ink:#14201b;--muted:#5b6b64;--line:#d9e0dc;--pitch:#1f6b47;--focus:#d6453d;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Inter",-apple-system,"Segoe UI",system-ui,sans-serif;--f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 var(--f-body)}
+h2{font-family:var(--f-display);font-weight:700;font-size:30px;line-height:1.1;margin:0}
+p{margin:0;max-width:72ch}
+.muted{color:var(--muted)}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.phone{flex:none;background:var(--ink)}
+/* why: real footage — landscape source vs. three ways to post vertically, with a mock short-video overlay */
+.why{display:grid;gap:20px;margin-top:12px;padding-top:24px;border-top:1px solid var(--line)}
+.why-viz{display:grid;grid-template-columns:minmax(0,1.9fr) repeat(3,minmax(0,1fr));gap:20px;align-items:end}
+.why-k{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:-8px}
+.why-viz+.why-k{margin-top:12px}
+.why-viz figure{margin:0;display:grid;gap:10px;justify-items:center;align-content:end;min-width:0}
+.why-viz figcaption{display:grid;gap:2px;text-align:center;font-size:13px;line-height:1.4}
+.why-viz figcaption b{font-size:14px}
+.why-land{width:100%;aspect-ratio:16/9;border-radius:6px;overflow:hidden;background:#000}
+.why-land video{display:block;width:100%;height:100%;object-fit:cover}
+.why .phone{width:min(100%,168px);padding:6px;border-radius:22px}
+.why-screen{position:relative;aspect-ratio:9/16;border-radius:16px;overflow:hidden;background:#000;container-type:inline-size}
+.why-screen video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.why-screen video.contain{object-fit:contain}
+.why .bad{color:var(--focus)} .why .good{color:var(--pitch);font-weight:600}
+/* mock long-form player overlay on the landscape clip (generic, unbranded) */
+.why-land{position:relative;container-type:inline-size}
+.yt{position:absolute;inset:0;color:#fff;font-family:var(--f-body);pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.5)}
+.yt::before,.yt::after{content:"";position:absolute;left:0;right:0}
+.yt::before{top:0;height:22%;background:linear-gradient(rgba(0,0,0,.55),transparent)}
+.yt::after{bottom:0;height:30%;background:linear-gradient(transparent,rgba(0,0,0,.65))}
+.yt>*{position:absolute;z-index:1}
+.yt-title{top:3cqw;left:3cqw;right:3cqw;display:flex;align-items:center;gap:2cqw;font-size:3.1cqw;font-weight:600}
+.yt-title i{flex:none;width:6cqw;height:6cqw;border-radius:50%;background:linear-gradient(135deg,#38c4e6,#1f6b47)}
+.yt-title span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.yt-track{left:3cqw;right:3cqw;bottom:10cqw;height:.9cqw;background:rgba(255,255,255,.3);border-radius:1cqw}
+.yt-track b{position:absolute;left:0;top:0;bottom:0;width:86%;background:rgba(255,255,255,.45);border-radius:1cqw}
+.yt-fill{position:absolute;left:0;top:0;bottom:0;width:78.6%;background:#f03;border-radius:1cqw}
+.yt-fill::after{content:"";position:absolute;right:-1.4cqw;top:50%;width:2.8cqw;height:2.8cqw;margin-top:-1.4cqw;border-radius:50%;background:#f03}
+.yt-bar{left:3cqw;right:3cqw;bottom:2.4cqw;height:6cqw;display:flex;align-items:center;gap:3.2cqw;font-size:2.8cqw;font-variant-numeric:tabular-nums}
+.yt-bar svg{width:5cqw;height:5cqw;fill:#fff;flex:none}
+.yt-bar .sp{flex:1}
+.yt-cc{font-size:2.2cqw;font-weight:700;border:.45cqw solid #fff;border-radius:.8cqw;padding:0 .7cqw;line-height:1.4}
+/* mock feed overlay (generic, unbranded) */
+.ov{position:absolute;inset:0;color:#fff;font-family:var(--f-body);pointer-events:none;text-shadow:0 1px 2px rgba(0,0,0,.55)}
+.ov::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34%;background:linear-gradient(transparent,rgba(0,0,0,.45))}
+.ov>*{position:absolute;z-index:1}
+.ov-top{top:6%;left:0;right:20cqw;display:flex;justify-content:center;gap:6cqw;font-size:6.6cqw;font-weight:600}
+.ov-top span{opacity:.7}
+.ov-top b{border-bottom:1.5px solid #fff;padding-bottom:1px}
+.ov-rail{right:3cqw;bottom:17%;display:grid;gap:3.6cqw;justify-items:center;font-size:5.6cqw;font-weight:600}
+.ov-rail div{display:grid;justify-items:center;gap:.5cqw}
+.ov-rail svg{width:13cqw;height:13cqw;fill:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.4))}
+.ov-av{width:15cqw;height:15cqw;border-radius:50%;border:1.5px solid #fff;background:linear-gradient(135deg,#ffd23f,#d6453d);position:relative;margin-bottom:2cqw}
+.ov-av::after{content:"+";position:absolute;left:50%;bottom:-4.5cqw;transform:translateX(-50%);width:8cqw;height:8cqw;border-radius:50%;background:#fe2c55;font-size:7cqw;line-height:8cqw;text-align:center;font-weight:700}
+.ov-disc{width:12cqw;height:12cqw;border-radius:50%;background:radial-gradient(circle,#ddd 0 18%,#222 20% 100%);border:2.5cqw solid #333;animation:ov-spin 4s linear infinite}
+@keyframes ov-spin{to{transform:rotate(360deg)}}
+.ov-cap{left:4cqw;right:24cqw;bottom:6%;display:grid;gap:1.5cqw;font-size:6.4cqw;line-height:1.3}
+.ov-cap b{font-size:7.2cqw}
+.ov-cap span{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ov-bar{left:0;right:0;bottom:0;height:1.4cqw;background:rgba(255,255,255,.25)}
+.ov-bar i{display:block;height:100%;width:0;background:#fff}
+.why-pts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;border-top:3px solid var(--ink)}
+.why-pts>div{padding:14px 16px 0 0;display:grid;gap:4px;align-content:start;min-width:0}
+.why-pts>div+div{padding-left:16px;border-left:1px solid var(--line)}
+.why-pts b{font-family:var(--f-display);font-size:20px;line-height:1.2}
+.why-pts span{font-size:13.5px;color:var(--muted)}
+@media (max-width:720px){
+  .why-viz{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:start}
+  .why-viz figure:first-child{grid-column:1/-1}
+  .why .phone{padding:4px;border-radius:16px}
+  .why-screen{border-radius:12px}
+  .why-pts{grid-template-columns:minmax(0,1fr)}
+  .why-pts>div{padding-left:0!important;border-left:0!important;padding-bottom:12px}
+  .why-pts>div+div{border-top:1px solid var(--line)}}
+@media (prefers-reduced-motion:reduce){.ov-disc{animation:none}}
+.why{border-top:0;margin-top:0;padding-top:4px}
+</style></head><body>
+    <section class="why" aria-labelledby="why-h">
+      <div class="eyebrow">Why it matters</div>
+      <h2 id="why-h">Shot for widescreen. Watched vertically.</h2>
+      <p>Creators publish long-form video on YouTube in 16:9, but short-form reach lives in the 9:16 feeds of TikTok, Reels, and Shorts. Repurposing existing footage is the cheapest source of new content, but you can’t just repost it.</p>
+      <div class="why-k">Example 1 · Football broadcast</div>
+      <div class="why-viz" data-t0="4871" data-tot="6197">
+        <figure><div class="why-land"><video class="why-v" data-v="FOOTBALL_SOURCE" data-p="FOOTBALL_SOURCE" muted loop playsinline autoplay preload="auto"></video><div class="yt" aria-hidden="true"><div class="yt-title"><i></i><span>Real Madrid vs Barcelona · El Clásico 2017 · Full Match</span></div><div class="yt-track"><b></b><span class="yt-fill"></span></div><div class="yt-bar"><svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg><svg viewBox="0 0 24 24"><path d="M5 6l9 6-9 6zM16 6h2.5v12H16z"/></svg><svg viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3z"/><path d="M15 8.5a4.5 4.5 0 010 7z"/><path d="M15 4.5a8.5 8.5 0 010 15v-2.2a6.3 6.3 0 000-10.6z"/></svg><span class="yt-time">1:21:11 / 1:43:17</span><span class="sp"></span><span class="yt-cc">CC</span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="3.2 2"/><circle cx="12" cy="12" r="2.6"/></svg><svg viewBox="0 0 24 24"><path d="M3 4h18v12H3zM5 6v8h14V6zM9 18h6v2H9z"/></svg><svg viewBox="0 0 24 24"><path d="M4 4h6v2H6v4H4zM14 4h6v6h-2V6h-4zM4 14h2v4h4v2H4zM18 14h2v6h-6v-2h4z"/></svg></div></div></div><figcaption><b>YouTube original · 16:9</b><span class="muted">73′ Rakitić goal, broadcast feed</span></figcaption></figure>
+        <figure><div class="phone"><div class="why-screen"><video class="why-v contain" data-v="FOOTBALL_SOURCE" data-p="FOOTBALL_SOURCE" muted loop playsinline autoplay preload="auto"></video><div class="ov" aria-hidden="true"><div class="ov-top"><span>Following</span><b>For You</b></div><div class="ov-rail"><span class="ov-av"></span><div><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.4 5 7 5c2 0 3.6 1.1 5 2.8C13.4 6.1 15 5 17 5c3.6 0 5.8 3.6 4.5 6.8C19.5 16.4 12 21 12 21z"/></svg>128K</div><div><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.8 2 11.5c0 2.6 1.4 4.9 3.6 6.5L5 21l4-2c.9.2 1.9.3 3 .3 5.5 0 10-3.8 10-8.5S17.5 3 12 3z"/></svg>3,421</div><div><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.2L6 21z"/></svg>8,906</div><div><svg viewBox="0 0 24 24"><path d="M13 4l9 8-9 8v-5c-6 0-9.5 1.8-11 5 .5-6 4-10.5 11-11z"/></svg>Share</div><span class="ov-disc"></span></div><div class="ov-cap"><b>@football.daily</b><span>Rakitić curls one in from outside the box and silences the Bernabéu #football #ElClasico</span></div><div class="ov-bar"><i></i></div></div></div></div><figcaption><b>① Repost as-is</b><span class="bad">Video fills just 32% of the screen</span></figcaption></figure>
+        <figure><div class="phone"><div class="why-screen"><video class="why-v" data-v="FOOTBALL_SOURCE" data-p="FOOTBALL_SOURCE" muted loop playsinline autoplay preload="auto"></video><div class="ov" aria-hidden="true"><div class="ov-top"><span>Following</span><b>For You</b></div><div class="ov-rail"><span class="ov-av"></span><div><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.4 5 7 5c2 0 3.6 1.1 5 2.8C13.4 6.1 15 5 17 5c3.6 0 5.8 3.6 4.5 6.8C19.5 16.4 12 21 12 21z"/></svg>128K</div><div><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.8 2 11.5c0 2.6 1.4 4.9 3.6 6.5L5 21l4-2c.9.2 1.9.3 3 .3 5.5 0 10-3.8 10-8.5S17.5 3 12 3z"/></svg>3,421</div><div><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.2L6 21z"/></svg>8,906</div><div><svg viewBox="0 0 24 24"><path d="M13 4l9 8-9 8v-5c-6 0-9.5 1.8-11 5 .5-6 4-10.5 11-11z"/></svg>Share</div><span class="ov-disc"></span></div><div class="ov-cap"><b>@football.daily</b><span>Rakitić curls one in from outside the box and silences the Bernabéu #football #ElClasico</span></div><div class="ov-bar"><i></i></div></div></div></div><figcaption><b>② Center crop</b><span class="bad">The ball keeps leaving the frame</span></figcaption></figure>
+        <figure><div class="phone"><div class="why-screen"><video class="why-v" data-v="FOOTBALL_DREX" data-p="FOOTBALL_DREX" muted loop playsinline autoplay preload="auto"></video><div class="ov" aria-hidden="true"><div class="ov-top"><span>Following</span><b>For You</b></div><div class="ov-rail"><span class="ov-av"></span><div><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.4 5 7 5c2 0 3.6 1.1 5 2.8C13.4 6.1 15 5 17 5c3.6 0 5.8 3.6 4.5 6.8C19.5 16.4 12 21 12 21z"/></svg>128K</div><div><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.8 2 11.5c0 2.6 1.4 4.9 3.6 6.5L5 21l4-2c.9.2 1.9.3 3 .3 5.5 0 10-3.8 10-8.5S17.5 3 12 3z"/></svg>3,421</div><div><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.2L6 21z"/></svg>8,906</div><div><svg viewBox="0 0 24 24"><path d="M13 4l9 8-9 8v-5c-6 0-9.5 1.8-11 5 .5-6 4-10.5 11-11z"/></svg>Share</div><span class="ov-disc"></span></div><div class="ov-cap"><b>@football.daily</b><span>Rakitić curls one in from outside the box and silences the Bernabéu #football #ElClasico</span></div><div class="ov-bar"><i></i></div></div></div></div><figcaption><b>③ Content-aware framing</b><span class="good">Reframed automatically by Drex</span></figcaption></figure>
+      </div>
+      <div class="why-k">Example 2 · Talking-head interview</div>
+      <div class="why-viz" data-t0="417" data-tot="1800">
+        <figure><div class="why-land"><video class="why-v" data-v="TALK_SOURCE" data-p="TALK_SOURCE" muted loop playsinline autoplay preload="auto"></video><div class="yt" aria-hidden="true"><div class="yt-title"><i></i><span>Three-person interview · Full Episode</span></div><div class="yt-track"><b></b><span class="yt-fill" style="width:23.2%"></span></div><div class="yt-bar"><svg viewBox="0 0 24 24"><path d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg><svg viewBox="0 0 24 24"><path d="M5 6l9 6-9 6zM16 6h2.5v12H16z"/></svg><svg viewBox="0 0 24 24"><path d="M3 9h4l5-4v14l-5-4H3z"/><path d="M15 8.5a4.5 4.5 0 010 7z"/><path d="M15 4.5a8.5 8.5 0 010 15v-2.2a6.3 6.3 0 000-10.6z"/></svg><span class="yt-time">6:57 / 30:00</span><span class="sp"></span><span class="yt-cc">CC</span><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6.5" fill="none" stroke="#fff" stroke-width="4" stroke-dasharray="3.2 2"/><circle cx="12" cy="12" r="2.6"/></svg><svg viewBox="0 0 24 24"><path d="M3 4h18v12H3zM5 6v8h14V6zM9 18h6v2H9z"/></svg><svg viewBox="0 0 24 24"><path d="M4 4h6v2H6v4H4zM14 4h6v6h-2V6h-4zM4 14h2v4h4v2H4zM18 14h2v6h-6v-2h4z"/></svg></div></div></div><figcaption><b>YouTube original · 16:9</b><span class="muted">Interview at 6:57, two people in frame</span></figcaption></figure>
+        <figure><div class="phone"><div class="why-screen"><video class="why-v contain" data-v="TALK_SOURCE" data-p="TALK_SOURCE" muted loop playsinline autoplay preload="auto"></video><div class="ov" aria-hidden="true"><div class="ov-top"><span>Following</span><b>For You</b></div><div class="ov-rail"><span class="ov-av"></span><div><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.4 5 7 5c2 0 3.6 1.1 5 2.8C13.4 6.1 15 5 17 5c3.6 0 5.8 3.6 4.5 6.8C19.5 16.4 12 21 12 21z"/></svg>86.4K</div><div><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.8 2 11.5c0 2.6 1.4 4.9 3.6 6.5L5 21l4-2c.9.2 1.9.3 3 .3 5.5 0 10-3.8 10-8.5S17.5 3 12 3z"/></svg>1,208</div><div><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.2L6 21z"/></svg>5,733</div><div><svg viewBox="0 0 24 24"><path d="M13 4l9 8-9 8v-5c-6 0-9.5 1.8-11 5 .5-6 4-10.5 11-11z"/></svg>Share</div><span class="ov-disc"></span></div><div class="ov-cap"><b>@ai.podcast</b><span>What it costs to run a gigawatt cluster for a year: about $15B #AI #podcast</span></div><div class="ov-bar"><i></i></div></div></div></div><figcaption><b>① Repost as-is</b><span class="bad">Video fills just 32% of the screen</span></figcaption></figure>
+        <figure><div class="phone"><div class="why-screen"><video class="why-v" data-v="TALK_SOURCE" data-p="TALK_SOURCE" muted loop playsinline autoplay preload="auto"></video><div class="ov" aria-hidden="true"><div class="ov-top"><span>Following</span><b>For You</b></div><div class="ov-rail"><span class="ov-av"></span><div><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.4 5 7 5c2 0 3.6 1.1 5 2.8C13.4 6.1 15 5 17 5c3.6 0 5.8 3.6 4.5 6.8C19.5 16.4 12 21 12 21z"/></svg>86.4K</div><div><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.8 2 11.5c0 2.6 1.4 4.9 3.6 6.5L5 21l4-2c.9.2 1.9.3 3 .3 5.5 0 10-3.8 10-8.5S17.5 3 12 3z"/></svg>1,208</div><div><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.2L6 21z"/></svg>5,733</div><div><svg viewBox="0 0 24 24"><path d="M13 4l9 8-9 8v-5c-6 0-9.5 1.8-11 5 .5-6 4-10.5 11-11z"/></svg>Share</div><span class="ov-disc"></span></div><div class="ov-cap"><b>@ai.podcast</b><span>What it costs to run a gigawatt cluster for a year: about $15B #AI #podcast</span></div><div class="ov-bar"><i></i></div></div></div></div><figcaption><b>② Center crop</b><span class="bad">Often frames the gap between them</span></figcaption></figure>
+        <figure><div class="phone"><div class="why-screen"><video class="why-v" data-v="TALK_DREX" data-p="TALK_DREX" muted loop playsinline autoplay preload="auto"></video><div class="ov" aria-hidden="true"><div class="ov-top"><span>Following</span><b>For You</b></div><div class="ov-rail"><span class="ov-av"></span><div><svg viewBox="0 0 24 24"><path d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.4 5 7 5c2 0 3.6 1.1 5 2.8C13.4 6.1 15 5 17 5c3.6 0 5.8 3.6 4.5 6.8C19.5 16.4 12 21 12 21z"/></svg>86.4K</div><div><svg viewBox="0 0 24 24"><path d="M12 3C6.5 3 2 6.8 2 11.5c0 2.6 1.4 4.9 3.6 6.5L5 21l4-2c.9.2 1.9.3 3 .3 5.5 0 10-3.8 10-8.5S17.5 3 12 3z"/></svg>1,208</div><div><svg viewBox="0 0 24 24"><path d="M6 3h12v18l-6-4.2L6 21z"/></svg>5,733</div><div><svg viewBox="0 0 24 24"><path d="M13 4l9 8-9 8v-5c-6 0-9.5 1.8-11 5 .5-6 4-10.5 11-11z"/></svg>Share</div><span class="ov-disc"></span></div><div class="ov-cap"><b>@ai.podcast</b><span>What it costs to run a gigawatt cluster for a year: about $15B #AI #podcast</span></div><div class="ov-bar"><i></i></div></div></div></div><figcaption><b>③ Content-aware framing</b><span class="good">Stays on whoever is talking</span></figcaption></figure>
+      </div>
+      <div class="why-pts">
+        <div><b>Only a third survives</b><span>A 9:16 frame keeps 32% of the width. The other two-thirds gets cut.</span></div>
+        <div><b>The right third keeps moving</b><span>Follow the ball on the attack, the goal on a shot, the speaker in an interview.</span></div>
+        <div><b>Today it’s manual</b><span>Editors pick the moments and drag the crop frame by hand, shot by shot. It doesn’t scale.</span></div>
+      </div>
+    </section>
+<script>
+const MEDIA = __MEDIA__;  // {KEY: data URI, KEY_POSTER: data URI}, each embedded once
+const TALK_OK = !!MEDIA.TALK_SOURCE;
+const blobs = {};
+async function blobUrl(k) { if (!blobs[k]) blobs[k] = fetch(MEDIA[k]).then(r => r.blob()).then(b => URL.createObjectURL(b)); return blobs[k]; }
+document.querySelectorAll("[data-p]").forEach(v => { const u = MEDIA[v.dataset.p + "_POSTER"]; if (u) v.poster = u; });
+const ready = Promise.all([...document.querySelectorAll("[data-v]")].map(async v => { if (MEDIA[v.dataset.v]) { v.src = await blobUrl(v.dataset.v); v.load(); } }));
+if (!TALK_OK) { const k = document.querySelectorAll(".why-k"), v = document.querySelectorAll(".why-viz"); if (k[1]) k[1].remove(); if (v[1]) v[1].remove(); }
+// ---- why: per example row, keep the four clips in sync, drive the mock progress bars and player clock, pause offscreen
+(() => {
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const clock = (x, long) => { x = Math.floor(x); const h = Math.floor(x / 3600), m = Math.floor(x / 60) % 60, sec = String(x % 60).padStart(2, "0"); return long ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`; };
+  document.querySelectorAll(".why-viz").forEach(row => {
+    const vs = [...row.querySelectorAll(".why-v")];
+    if (!vs.length) return;
+    const m = vs[0], bars = row.querySelectorAll(".ov-bar i");
+    const T0 = +row.dataset.t0 || 0, TOT = +row.dataset.tot || 0, long = TOT >= 3600;
+    m.addEventListener("timeupdate", () => {
+      vs.slice(1).forEach(v => { if (v.readyState > 1 && Math.abs(v.currentTime - m.currentTime) > 0.2) v.currentTime = m.currentTime; });
+      bars.forEach(b => b.style.width = (m.currentTime / (m.duration || 1) * 100).toFixed(1) + "%");
+      if (!TOT) return;
+      const t = T0 + m.currentTime;
+      row.querySelectorAll(".yt-time").forEach(e => e.textContent = `${clock(t, long)} / ${clock(TOT, long)}`);
+      row.querySelectorAll(".yt-fill").forEach(e => e.style.width = (t / TOT * 100).toFixed(2) + "%");
+    });
+    if (still) { vs.forEach(v => { v.autoplay = false; v.pause(); }); return; }
+    new IntersectionObserver(([e]) => vs.forEach(v => e.isIntersecting ? v.play().catch(() => {}) : v.pause())).observe(row);
+  });
+})();
+</script></body></html>

@@ -73,6 +73,24 @@ if not available:
 
 st.html('<div class="k">Drex Vertical Reframe · case studies</div>')
 st.title("How a long landscape video becomes a vertical short")
+
+# ------------------------------------------------------------------ why it matters (same block as the results page)
+WHY = ROOT / "demo" / "assets" / "why"
+why_media = {}
+for key, stem in (("FOOTBALL_SOURCE", "football_source"), ("FOOTBALL_DREX", "football_drex"),
+                  ("TALK_SOURCE", "talk_source"), ("TALK_DREX", "talk_drex")):
+    if (WHY / f"{stem}.mp4").exists():
+        why_media[key] = b64(str(WHY / f"{stem}.mp4"))
+        why_media[key + "_POSTER"] = b64(str(WHY / f"{stem}.jpg"))
+if why_media:
+    why_html = Path(__file__).with_name("why_examples.html").read_text().replace("__MEDIA__", json.dumps(why_media))
+    why_h = 1095 if "TALK_SOURCE" in why_media else 760
+    if hasattr(st, "iframe"):
+        st.iframe(why_html, height=why_h)
+    else:
+        components.html(why_html, height=why_h, scrolling=False)
+    st.divider()
+st.markdown("## Inside the pipeline: two recorded cases")
 choice = st.segmented_control("Case", [n for _, n in available], default=available[0][1], key="case_pick",
                               label_visibility="collapsed") or available[0][1]
 cid = next(c for c, n in available if n == choice)
@@ -83,11 +101,9 @@ talk = case["scenario"] == "talk"
 st.subheader(case["title"])
 st.caption(case["subtitle"] + f"  ·  recorded {case['recorded_at']} (Drex was re-run on this clip to keep every raw answer)")
 
-with st.expander("Why this matters, and what is new", expanded=False):
+with st.expander("What is new compared with existing auto-reframe", expanded=False):
     st.html("""<ul class="why">
-<li><b>Only a third survives.</b> A full-height 9:16 frame keeps 32% of a 16:9 picture's width.</li>
-<li><b>The right third keeps moving.</b> The ball on the attack, the goal on a shot, the scorer after; in an interview, whoever is talking.</li>
-<li><b>Today it is manual</b>, and existing auto-reframe tools (e.g. Premiere Pro Auto Reframe, Firefly Auto reframe) follow the most salient subject.</li>
+<li><b>Existing auto-reframe</b> (e.g. Premiere Pro Auto Reframe, Firefly Auto reframe) follows the most salient subject.</li>
 <li><b>New here: framing follows intent.</b> Drex decides what matters from the picture, the commentary or transcript, and who is speaking.</li>
 <li><b>Locating becomes multiple choice.</b> Drex has no box output, so it picks numbered grid lines; its probabilities become confidence weights for the camera.</li>
 <li><b>Camera language fits the content:</b> a follow-cam that never loses the ball for sport, locked shots with hard cuts for talk.</li>
