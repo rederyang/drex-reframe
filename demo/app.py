@@ -5,6 +5,7 @@ import base64
 import hashlib
 import io
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -16,6 +17,7 @@ import requests
 import streamlit as st
 
 from demo import backend
+from demo import presentation
 from reframe import pipeline
 
 st.set_page_config(page_title="Drex Vertical Reframe - Key Region Detection", page_icon="◧", layout="wide", initial_sidebar_state="collapsed")
@@ -28,12 +30,13 @@ h2,h3{font-size:.95rem!important;font-weight:550!important;letter-spacing:-.02em
 [data-testid="stMainBlockContainer"]{padding-top:2rem}
 div[data-testid="stVerticalBlock"]{gap:.75rem}
 button[kind="primary"]{background:#285f45;border:1px solid #285f45;border-radius:7px}
+button[kind="primary"]:hover,button[kind="primary"]:focus{background:#285f45;border-color:#285f45;color:white}
 [data-testid="stImage"] img,video{border-radius:7px}
 [data-testid="stCaptionContainer"]{font-size:12px;color:#7c867e}
 [data-testid="stExpander"]{background:transparent;border-color:#e1e5df;border-radius:7px}
 [data-testid="stExpander"] p{font-size:12px}
 .empty{aspect-ratio:9/16;width:100%;max-width:240px;background:#edf0ea;border:1px solid #e3e8df;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#a5b09f;font-size:20px;font-weight:300}
-.legend{display:flex;gap:16px;font-size:11px;color:#7a867e;margin-top:4px}.legend i{display:inline-block;width:6px;height:6px;border-radius:2px;background:#e0c500;margin-right:5px}.legend .cyan{background:#00bcd8}
+.legend{display:flex;gap:16px;font-size:11px;color:#7a867e;margin-top:4px}.legend i{display:inline-block;width:6px;height:6px;border-radius:2px;background:#29d789;margin-right:5px}.legend .cyan{background:#3db2ff}.legend .amber{background:#ffa948}
 [role="radio"][aria-checked="true"]{color:#285f45!important;border-color:#99b7a0!important;background:#e8f0e6!important}
 @media(max-width:700px){.block-container{padding:1.4rem 1rem}h1{font-size:1.4rem!important}}
 </style>""")
@@ -52,6 +55,36 @@ def set_goal():
     value = backend.PRESETS[st.session_state.goal_preset]
     if value is not None:
         st.session_state.goal = value
+
+
+def set_axis_view():
+    selected = st.session_state.get("boundary", "left")
+    if st.session_state.display_mode == "X boundaries" and selected not in ("left", "right"):
+        st.session_state.boundary = "left"
+    if st.session_state.display_mode == "Y boundaries" and selected not in ("top", "bottom"):
+        st.session_state.boundary = "top"
+
+
+def show_boundary_probabilities(result, index):
+    mode = st.session_state.get("display_mode") or "Region"
+    options = ["left", "right"] if mode == "X boundaries" else ["top", "bottom"] if mode == "Y boundaries" else ["left", "right", "top", "bottom"]
+    if st.session_state.get("boundary") not in options:
+        st.session_state.boundary = options[0]
+    choose, description = st.columns([1.3, 2.7], vertical_alignment="center")
+    with choose:
+        boundary = st.segmented_control("Boundary probability", options, key="boundary", format_func=str.title) or options[0]
+    rows, labels, edge = presentation.boundary_distribution(result, index, boundary)
+    ceiling = min(1.0, max(0.1, math.ceil(max(row["Probability"] for row in rows) * 10) / 10))
+    with description:
+        st.caption(f"{boundary.title()} · {edge['px']:.0f} px · model choice {edge['choice']}")
+    st.vega_lite_chart(spec={"encoding": {"x": {"field": "Index", "type": "quantitative",
+        "scale": {"domain": [-0.6, len(labels) - 0.4], "nice": False}, "axis": {
+            "title": None, "values": list(range(len(labels))), "labelExpr": json.dumps(labels) + "[datum.value]", "grid": False}}}, "layer": [
+        {"data": {"values": rows}, "mark": {"type": "bar", "color": "#df9a52", "size": 14}, "encoding": {
+            "y": {"field": "Probability", "type": "quantitative", "scale": {"domain": [0, ceiling], "nice": False}, "axis": {"format": ".0%", "values": [0, ceiling / 2, ceiling], "title": None}},
+            "tooltip": [{"field": "Label"}, {"field": "Probability", "format": ".2%"}]}},
+        {"data": {"values": [{"Index": edge["exp_idx"]}]}, "mark": {"type": "rule", "color": "#2c6c4a", "strokeDash": [4, 3], "strokeWidth": 2}}], "height": 165}, width="stretch")
+    st.caption("Grid-line probabilities · dashed line: decoded boundary")
 
 
 st.title("Drex Vertical Reframe - Key Region Detection")
@@ -121,7 +154,7 @@ with view_col:
     view = st.segmented_control("View", ["Frames", "Model input", "Video"], key="view", label_visibility="collapsed") or "Frames"
 with info_col:
     elapsed = f" · {result['response'].get('_latency_s', 0):.2f}s model" if result else ""
-    st.caption(f"8 frames · {len(prepared['questions'])} choices · 1 request{elapsed}")
+    st.caption(f"8 frames · {len(prepared['questions'])} questions · 1 request{elapsed}")
 
 if view == "Video" and result:
     left, right = st.columns([3.5, 1], gap="medium")
@@ -137,13 +170,24 @@ elif view == "Video":
 else:
     index = st.session_state.get("frame", 0)
     image = frames[index][1]
-    source = prepared["images"][index] if view == "Model input" else backend.overlay(image, result, index) if result else image
+    if result and view == "Frames":
+        if not st.session_state.get("display_mode"):
+            st.session_state.display_mode = "Region"
+        st.segmented_control("Result view", list(presentation.VIEWS), key="display_mode", on_change=set_axis_view, label_visibility="collapsed")
+    mode = presentation.VIEWS[st.session_state.get("display_mode") or "Region"]
+    source = image
+    if view == "Model input":
+        source = prepared["images"][index]
+    elif result:
+        _, camera_box = backend.frame_crop(image, result, index)
+        boundary = st.session_state.get("boundary") or ("top" if mode == "horizontal" else "left")
+        source = presentation.render_detection(image, result["decoded"][index], camera_box, mode, boundary)
     left, right = st.columns([4, 1.15], gap="medium")
     with left:
-        st.caption("NACE input" if view == "Model input" else "Source")
+        st.caption("NACE input" if view == "Model input" else "Detected key region" if result and mode != "original" else "Source")
         st.image(source, width="stretch")
-        if result and view == "Frames":
-            st.html('<div class="legend"><span><i></i>Region + focus</span><span><i class="cyan"></i>Final crop</span></div>')
+        if result and view == "Frames" and mode != "original":
+            st.html('<div class="legend"><span><i></i>Key region</span><span><i class="cyan"></i>9:16 crop</span><span><i class="amber"></i>Selected boundary / focus</span></div>')
     with right:
         st.caption("9:16 output")
         if result:
@@ -153,6 +197,10 @@ else:
             st.html('<div class="empty">9:16</div>')
     st.segmented_control("Frame", list(range(len(frames))), format_func=lambda i: timecode(frames[i][0] + scene.get("scene_start", 0)),
                          key="frame", selection_mode="single", label_visibility="collapsed")
+    if result and view == "Frames" and mode != "original":
+        show_boundary_probabilities(result, index)
+        if result["decoded"][index]["flags"]:
+            st.caption("Boundary flags: " + ", ".join(result["decoded"][index]["flags"]))
 
 if result:
     save_video, save_frame, save_data, _ = st.columns([1.4, 1.4, 1.4, 3])

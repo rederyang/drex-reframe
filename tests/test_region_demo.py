@@ -14,7 +14,7 @@ from PIL import Image
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 
-from demo import backend
+from demo import backend, presentation
 from reframe import media, pipeline
 
 
@@ -203,6 +203,25 @@ class AppTests(unittest.TestCase):
             app.selectbox(key="clip").select("Touchline · 01:00").run()
             self.assertNotIn("result", app.session_state)
             self.assertEqual(run.call_count, 2)
+
+    def test_axis_boundary_and_frame_switches_reuse_the_same_result(self):
+        with patch.object(backend, "execute", side_effect=self.fake_execute) as run, \
+                patch.object(presentation, "render_detection", wraps=presentation.render_detection) as render:
+            app = self.app.run(timeout=30)
+            app.button(key="run").click().run(timeout=30)
+            def control(key):
+                return next(widget for widget in app.get("button_group") if widget.key == key)
+            for view, boundary in (("Y boundaries", "bottom"), ("X boundaries", "right"), ("Region", "top")):
+                control("display_mode").set_value(view).run(timeout=30)
+                control("boundary").set_value(boundary).run(timeout=30)
+                control("frame").set_value(6).run(timeout=30)
+                self.assertFalse(app.exception)
+                self.assertEqual(render.call_args.args[3:], (presentation.VIEWS[view], boundary))
+                self.assertEqual(render.call_args.args[1], app.session_state["result"]["decoded"][6])
+            control("display_mode").set_value("Original").run(timeout=30)
+            self.assertFalse(app.exception)
+            self.assertEqual(render.call_args.args[3], "original")
+            self.assertEqual(run.call_count, 1)
 
     def test_error_is_english_and_never_shows_fabricated_output(self):
         with patch.object(backend, "execute", side_effect=RuntimeError("NACE unavailable")) as run:
