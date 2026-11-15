@@ -8,3 +8,6 @@ __pycache__/
 .env.*
 !.env.example
 sites-replay/
+
+# interview footage (identifiable people) stays local; see README > Playground
+demo/assets/cases/interview-*/

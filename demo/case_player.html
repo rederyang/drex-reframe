@@ -1,0 +1,171 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<style>
+:root{--bg:#f6f8f6;--surface:#fff;--ink:#18231e;--muted:#66756c;--line:#dfe5df;--pitch:#2f7a52;--region:#c99a00;--crop:#0a8fb0;--focus:#d6453d;
+  --mono:ui-monospace,SFMono-Regular,Menlo,monospace;--body:-apple-system,BlinkMacSystemFont,"Inter","Segoe UI",sans-serif}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:13px/1.45 var(--body)}
+.top{display:grid;grid-template-columns:minmax(0,1fr) 172px 172px;gap:12px;align-items:start}
+.cap{font:600 11px var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dv{position:relative;line-height:0;border-radius:6px;overflow:hidden;background:#000}
+.dv video{width:100%;aspect-ratio:852/360;display:block}
+.dv svg{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.gl{stroke:#e6e9ea;stroke-opacity:.30;stroke-width:1}
+.gl.on{stroke:#ffd23f;stroke-opacity:.95;stroke-width:2}
+.gt{font:8px var(--mono);fill:#f1f4f5;fill-opacity:.6}
+.gf{fill:none;stroke:#ff5a4f;stroke-width:2.5}
+.vv video{width:100%;aspect-ratio:9/16;display:block;border-radius:6px;background:#000;object-fit:cover}
+.bar{display:flex;align-items:center;gap:8px;margin:8px 0 2px;flex-wrap:wrap}
+button,select{font:600 12px var(--body);border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:6px;padding:5px 10px;cursor:pointer}
+button.primary{background:var(--pitch);border-color:var(--pitch);color:#fff;min-width:78px}
+.tc{font:600 13px var(--mono);margin-left:auto;color:var(--muted)}
+.tl{width:100%;height:auto;display:block;background:var(--surface);border:1px solid var(--line);border-radius:6px;cursor:pointer;margin-top:6px}
+.tl .ax{font:10px var(--mono);fill:var(--muted)}.tl .lab{font:10.5px var(--body);fill:var(--muted)}
+.bottom{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1.6fr);gap:12px;margin-top:10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-width:0}
+.mi img{width:100%;display:block;border-radius:4px}
+.heard{margin-top:8px;font-size:12.5px;color:var(--ink);min-height:36px}
+.heard b{font:600 11px var(--mono);color:var(--muted);margin-right:6px}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:6px}
+.head .t{font:600 12px var(--mono);color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px}
+.chip{font-size:12px;padding:2px 8px;border-radius:999px;background:#eef3ef;border:1px solid #d9e4dc}
+.chip b{font-weight:650}
+.pin{background:#fdeceb;border-color:#f3c6c2;color:#a52f26}
+.qs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px}
+.q{min-width:0}
+.q .qh{display:flex;justify-content:space-between;font-size:11.5px;color:var(--muted)}
+.q .qh b{color:var(--ink);font-family:var(--mono)}
+.hist{display:flex;align-items:flex-end;gap:1px;height:34px;border-bottom:1px solid var(--line)}
+.hist i{flex:1;background:#c8d6cc;min-height:1px;border-radius:1px 1px 0 0;position:relative}
+.hist i.sel{background:var(--pitch)}
+.hl{display:flex;gap:1px;font:9px var(--mono);color:#8a968f}
+.hl span{flex:1;text-align:center;overflow:hidden}
+.dec{font:11.5px var(--mono);color:var(--muted);margin-top:8px;line-height:1.55}
+.dec b{color:var(--ink)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--muted);margin-top:4px}
+.legend i{display:inline-block;width:10px;height:8px;border-radius:2px;margin-right:4px;vertical-align:middle}
+</style></head><body>
+<div class="top">
+  <div>
+    <div class="cap">Debug view · source with keep region (yellow) and 9:16 crop (blue) + the grid Drex reads</div>
+    <div class="dv"><video id="dbg" playsinline muted preload="auto"></video><svg id="grid" viewBox="0 0 852 360" preserveAspectRatio="none"></svg></div>
+  </div>
+  <div class="vv"><div class="cap">Drex</div><video id="drex" playsinline preload="auto"></video></div>
+  <div class="vv"><div class="cap" id="gemcap">Gemini</div><video id="gem" playsinline muted preload="auto"></video></div>
+</div>
+<div class="bar">
+  <button class="primary" id="play">▶ Play</button>
+  <button id="prev">◀ Keyframe</button><button id="next">Keyframe ▶</button>
+  <select id="rate"><option value="0.5">0.5×</option><option value="1" selected>1×</option></select>
+  <label style="font-size:12px;color:var(--muted)"><input type="checkbox" id="gridon" checked> grid</label>
+  <span class="tc" id="tc">0.0 s</span>
+</div>
+<svg class="tl" id="tl" viewBox="0 0 1200 112" preserveAspectRatio="none"></svg>
+<div class="legend"><span><i style="background:#0a8fb0"></i>crop position (left ↔ right)</span><span><i style="background:#c99a00"></i>Drex keep-region center per keyframe</span><span><i style="background:#9aa6a0"></i>shot cut</span><span><i style="background:#7d8a83"></i>keyframe</span><span id="lgpin"><i style="background:#d6453d"></i>keyframe where the ball-in-frame constraint pinned the camera</span><span id="lgturn"></span></div>
+<div class="bottom">
+  <div class="card mi"><div class="head"><span class="cap" style="margin:0">What Drex saw (model input)</span><span class="t" id="mit"></span></div>
+    <img id="mimg" alt="Gridded frame sent to Drex"><div class="heard" id="heard"></div></div>
+  <div class="card"><div class="head"><span class="cap" style="margin:0">Drex answers for this keyframe</span><span class="t" id="kft"></span></div>
+    <div class="chips" id="chips"></div><div class="qs" id="qs"></div><div class="dec" id="dec"></div></div>
+</div>
+<script>
+const D = __DATA__, IM = __IMGS__;
+const SRC = {dbg: "__DEBUG__", drex: "__DREX__", gem: "__GEMINI__"};
+document.getElementById("gemcap").textContent = "__GEMLABEL__"; document.getElementById("gemcap").title = "__GEMLABEL__";
+const $ = id => document.getElementById(id);
+const V = {dbg: $("dbg"), drex: $("drex"), gem: $("gem")};
+// data: URIs -> blob URLs (reliable seeking)
+Object.entries(SRC).forEach(async ([k, u]) => {
+  if (!u) { V[k].parentElement.style.opacity = .35; return; }
+  try { const b = await (await fetch(u)).blob(); V[k].src = URL.createObjectURL(b); } catch (e) { V[k].src = u; }
+});
+// ---- grid overlay (source occupies x 0..640 of the 852-wide debug frame)
+const CW = 640 / 16, CH = 360 / 9;
+let g = "";
+for (let i = 0; i <= 16; i++) g += `<line class="gl v${i}" x1="${i*CW}" x2="${i*CW}" y1="0" y2="360"/>` + (i % 2 ? "" : `<text class="gt" x="${Math.min(i*CW+2, 628)}" y="9">${i}</text>`);
+for (let j = 0; j <= 9; j++) g += `<line class="gl h${j}" x1="0" x2="640" y1="${j*CH}" y2="${j*CH}"/><text class="gt" x="2" y="${Math.min(j*CH+10, 357)}">${String.fromCharCode(65+j)}</text>`;
+g += `<circle class="gf" id="gf" r="6" cx="-20" cy="-20"/>`;
+$("grid").innerHTML = g;
+$("gridon").onchange = e => $("grid").style.display = e.target.checked ? "" : "none";
+// ---- timeline
+const TW = 1200, TL = 80, TR = 10, X = t => TL + t / D.dur * (TW - TL - TR);
+function timeline() {
+  let s = "";
+  const lanes = D.talk ? {turn: 8, kf: 30, crop: 52} : {kf: 12, crop: 40};
+  if (D.talk) {
+    s += `<text class="lab" x="4" y="${lanes.turn+10}">speaker</text>`;
+    const col = {A: "#c2410c", B: "#7c3aed", C: "#0e7490"};
+    D.turns.forEach(([a, b, k]) => s += `<rect x="${X(a)}" y="${lanes.turn}" width="${Math.max(1, X(b)-X(a))}" height="12" rx="2" fill="${col[k]||'#999'}"/>`);
+    $("lgturn").innerHTML = '<i style="background:#c2410c"></i>speaker A <i style="background:#7c3aed;margin-left:8px"></i>speaker B (NDI diarization)';
+  }
+  s += `<text class="lab" x="4" y="${lanes.kf+10}">keyframes</text>`;
+  D.kf.forEach((r, i) => s += `<rect class="kft" data-i="${i}" x="${X(r.t_rel)-2}" y="${lanes.kf}" width="4" height="12" fill="${r.pinned ? '#d6453d' : '#7d8a83'}"/>`);
+  s += `<text class="lab" x="4" y="${lanes.crop+22}">crop</text>`;
+  s += `<rect x="${TL}" y="${lanes.crop}" width="${TW-TL-TR}" height="44" fill="#f1f4f1"/>`;
+  s += `<polyline points="${D.path.map(([t, x]) => `${X(t)},${lanes.crop + 44 - x*44}`).join(" ")}" fill="none" stroke="#0a8fb0" stroke-width="2.5"/>`;
+  D.kf.forEach(r => { const c = (r.decoded.region_px[0] + r.decoded.region_px[2]) / 2 / 1280; s += `<circle cx="${X(r.t_rel)}" cy="${lanes.crop + 44 - c*44}" r="2.6" fill="#c99a00"/>`; });
+  D.cuts.forEach(t => s += `<line x1="${X(t)}" x2="${X(t)}" y1="4" y2="98" stroke="#9aa6a0" stroke-dasharray="4 3"/>`);
+  for (let t = 0; t <= D.dur; t += 5) s += `<text class="ax" x="${X(t)}" y="108" text-anchor="middle">${t}s</text>`;
+  s += `<line id="ph" x1="${X(0)}" x2="${X(0)}" y1="2" y2="100" stroke="#18231e" stroke-width="2"/>`;
+  $("tl").innerHTML = s;
+}
+timeline();
+if (D.talk) $("lgpin").remove();
+$("tl").addEventListener("click", e => {
+  const r = $("tl").getBoundingClientRect(), x = (e.clientX - r.left) / r.width * TW;
+  seek(Math.max(0, Math.min(D.dur, (x - TL) / (TW - TL - TR) * D.dur)));
+});
+// ---- panel
+const LET = n => String.fromCharCode(65 + Math.min(Math.floor(n), 9)) + (n < 9 ? "." + Math.min(9, Math.round((n - Math.floor(n)) * 10)) : "");
+function hist(q, a) {
+  const ks = Object.keys(a.p), max = Math.max(...Object.values(a.p), 1e-6);
+  const short = k => k.replace("Image ", "").replace("two_shot", "2-shot").replace("group_wide", "group").slice(0, 6);
+  return `<div class="q"><div class="qh"><span>${q}</span><b>${a.choice} · ${(a.p[a.choice] ?? 0).toFixed(2)}</b></div>
+    <div class="hist">${ks.map(k => `<i class="${k === a.choice ? 'sel' : ''}" style="height:${Math.max(2, a.p[k] / max * 100)}%" title="${k}: ${a.p[k].toFixed(3)}"></i>`).join("")}</div>
+    <div class="hl">${ks.map(k => `<span>${ks.length > 12 && (+k % 4 && isNaN(k) === false) ? "" : short(k)}</span>`).join("")}</div></div>`;
+}
+let cur = -1;
+function paint(t) {
+  let k = 0; while (k + 1 < D.kf.length && D.kf[k + 1].t_rel <= t + 1e-3) k++;
+  $("tc").textContent = `${t.toFixed(1)} s / ${D.dur.toFixed(1)} s`;
+  $("ph").setAttribute("x1", X(t)); $("ph").setAttribute("x2", X(t));
+  if (k === cur) return; cur = k;
+  const r = D.kf[k], A = r.answers, dc = r.decoded;
+  // grid highlight: the lines nearest to Drex's decoded edges
+  const on = new Set(["v" + Math.round(dc.region_px[0] / 80), "v" + Math.round(dc.region_px[2] / 80), "h" + Math.round(dc.region_px[1] / 80), "h" + Math.round(dc.region_px[3] / 80)]);
+  document.querySelectorAll("#grid .gl").forEach(l => l.classList.toggle("on", [...l.classList].some(c => on.has(c))));
+  const f = $("gf"); if (dc.focus_px) { f.setAttribute("cx", dc.focus_px.x / 2); f.setAttribute("cy", dc.focus_px.y / 2); } else f.setAttribute("cx", -20);
+  $("mimg").src = IM[r.img]; $("mit").textContent = `${r.t_rel.toFixed(1)} s · request ${r.batch + 1}, Image ${r.image_k}`;
+  $("heard").innerHTML = r.heard ? `<b>${D.talk ? (D.spk[r.speaker] || "speaker") : "commentary"}</b>${r.heard}` : `<b>${D.talk ? "transcript" : "commentary"}</b><span style="color:var(--muted)">(none at this moment)</span>`;
+  $("kft").textContent = `keyframe ${k + 1} / ${D.kf.length}`;
+  const ch = [`<span class="chip">shot <b>${D.shot[A.shot.choice] || A.shot.choice}</b> ${(A.shot.p[A.shot.choice] ?? 0).toFixed(2)}</span>`];
+  if (A.who) ch.push(`<span class="chip">speaker <b>${A.who.choice}</b> ${(A.who.p[A.who.choice] ?? 0).toFixed(2)}</span>`);
+  if (r.pinned) ch.push(`<span class="chip pin">ball-in-frame constraint pinned this frame</span>`);
+  $("chips").innerHTML = ch.join("");
+  const order = ["left", "right", "top", "bottom", "focus_x", "focus_y"].concat(A.who ? ["who"] : []);
+  $("qs").innerHTML = order.filter(q => A[q]).map(q => hist(q, A[q])).join("");
+  const W = 1280;
+  $("dec").innerHTML = `decoded keep region <b>lines ${(dc.region_px[0]/80).toFixed(1)} → ${(dc.region_px[2]/80).toFixed(1)}, rows ${LET(dc.region_px[1]/80)} → ${LET(dc.region_px[3]/80)}</b>` +
+    (dc.focus_px ? ` · focus <b>line ${(dc.focus_px.x/80).toFixed(1)}, row ${LET(dc.focus_px.y/80)}</b>` : "") +
+    ` · uncertainty <b>±${(dc.x_uncertainty_px/80).toFixed(1)} cells</b><br>final 9:16 crop <b>centered on line ${r.crop.cx_line.toFixed(1)} (x=${r.crop.cx_px}px), height ${Math.round(r.crop.h_frac*100)}%</b>` +
+    (dc.flags && dc.flags.length ? ` · flags ${dc.flags.join(", ")}` : "");
+}
+// ---- sync
+const followers = () => [V.drex, V.gem].filter(v => v.src);
+let raf = 0;
+function loop() { const t = V.dbg.currentTime; followers().forEach(v => { if (Math.abs(v.currentTime - t) > 0.12) v.currentTime = t; }); paint(t); raf = V.dbg.paused ? 0 : requestAnimationFrame(loop); }
+function seek(t) { V.dbg.currentTime = t; followers().forEach(v => v.currentTime = t); paint(t); }
+$("play").onclick = () => {
+  if (V.dbg.paused) { [V.dbg, ...followers()].forEach(v => v.play().catch(() => {})); $("play").textContent = "❚❚ Pause"; if (!raf) raf = requestAnimationFrame(loop); }
+  else { [V.dbg, ...followers()].forEach(v => v.pause()); $("play").textContent = "▶ Play"; }
+};
+V.dbg.addEventListener("ended", () => { followers().forEach(v => v.pause()); $("play").textContent = "▶ Play"; });
+V.dbg.addEventListener("seeked", () => paint(V.dbg.currentTime));
+$("rate").onchange = e => [V.dbg, V.drex, V.gem].forEach(v => v.playbackRate = +e.target.value);
+const step = d => { const k = Math.max(0, Math.min(D.kf.length - 1, cur + d)); seek(D.kf[k].t_rel + 0.01); };
+$("prev").onclick = () => step(-1); $("next").onclick = () => step(1);
+// clicking a keyframe tick
+$("tl").addEventListener("click", e => { const i = e.target.dataset && e.target.dataset.i; if (i !== undefined) { e.stopPropagation(); seek(D.kf[+i].t_rel + 0.01); } }, true);
+paint(0);
+</script></body></html>
