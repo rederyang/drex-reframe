@@ -329,6 +329,16 @@ table.diff td{vertical-align:top;line-height:1.55}
 .panel dt{color:var(--muted)}
 .panel dd{margin:0;font-family:var(--f-mono);font-size:12px}
 .panel small{color:var(--muted)}
+
+/* where it fits next to Adobe */
+.adobe{display:grid;gap:16px;padding-top:24px;border-top:1px solid var(--line)}
+.adobe-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.adobe-grid>div{display:grid;gap:4px;align-content:start;padding:12px 14px;background:var(--surface);border:1px solid var(--line);border-radius:8px;min-width:0}
+.adobe-grid b{font-size:14px}
+.adobe-grid span{font-size:13px;color:var(--muted);line-height:1.5}
+.adobe-pitch{font-size:16px;max-width:78ch;padding-left:14px;border-left:3px solid var(--pitch)}
+@media (max-width:900px){.adobe-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.adobe-grid{grid-template-columns:minmax(0,1fr)}}
 @media (prefers-reduced-motion:reduce){*{scroll-behavior:auto}}
 </style>
 
@@ -360,6 +370,17 @@ table.diff td{vertical-align:top;line-height:1.55}
         <div><b>The right third keeps moving</b><span>Follow the ball on the attack, the goal on a shot, the speaker in an interview.</span></div>
         <div><b>Today it’s manual</b><span>Editors pick the moments and drag the crop frame by hand, shot by shot. It doesn’t scale.</span></div>
       </div>
+    </section>
+    <section class="adobe" aria-labelledby="adobe-h">
+      <div class="eyebrow">Where it fits next to Adobe</div>
+      <h2 id="adobe-h">Framing that follows intent, not just the most salient subject</h2>
+      <div class="adobe-grid">
+        <div><b>Premiere Pro · Auto Reframe</b><span>Since 2019: converts a sequence to vertical or square and keeps the “main subject” in frame, with motion-tracking speed presets. Public 2026 updates focus on GPU acceleration.</span></div>
+        <div><b>Firefly video editor · Auto reframe</b><span>Beta. Same goal of keeping the subject in frame; bulk reframing added in early 2026.</span></div>
+        <div><b>Firefly · Quick Cut</b><span>Beta, Feb 2026. Assembles raw footage into a first cut with topic, pacing, length and aspect ratio; aimed at social videos, interviews and event recaps.</span></div>
+        <div><b>Premiere · transcripts and text-based editing</b><span>Time-stamped text, the same kind of signal our interview pipeline uses.</span></div>
+      </div>
+      <p class="adobe-pitch"><b>What this adds:</b> today’s reframing follows whatever is most visible. Here, Drex decides what <i>matters</i> from the picture, the commentary and who is speaking: the ball on the attack, the goal on a shot, the scorer after; in an interview, the person talking, even when someone else moves more.</p>
     </section>
     <nav class="cases" role="tablist" aria-label="Choose a scenario">
       <a href="#football" role="tab" id="tab-football" aria-controls="case-football">
